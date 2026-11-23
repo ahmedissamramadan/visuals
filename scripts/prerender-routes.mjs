@@ -1,16 +1,14 @@
 import fs from 'fs';
 import path from 'path';
-import { createClient } from '@supabase/supabase-js';
 
 const distDir = path.resolve('dist');
 const templateHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
 
-// 1. Copy 404.html for GitHub Pages SPA fallback (supports clean URLs like /visuals/work/<slug>)
+// 1. Copy 404.html for GitHub Pages SPA fallback
 fs.writeFileSync(path.join(distDir, '404.html'), templateHtml);
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://owlglaqltdniywcprzab.supabase.co';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93bGdsYXFsdGRuaXl3Y3ByemFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzNTY2NDgsImV4cCI6MjExMDkzMjY0OH0._Y7iR4YU7z10-TOkRHSYC_466_5pJ3mFSYjRqGgbWGo';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const BASE_URL = 'https://ahmedissamramadan.github.io/visuals';
 const DEFAULT_OG = 'https://owlglaqltdniywcprzab.supabase.co/storage/v1/object/public/visuals/brand/ahmed-headshot-1000.webp';
@@ -20,7 +18,7 @@ function esc(s) {
 }
 
 function writeRouteHtml(relPath, { title, desc, ogImage, canonical }) {
-  let html = templateHtml
+  const html = templateHtml
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${esc(desc)}" />`)
     .replace(/<meta property="og:title" content="[^"]*"\s*\/>/, `<meta property="og:title" content="${esc(title)}" />`)
@@ -55,9 +53,22 @@ const sitemapUrls = [
   ...staticRoutes.filter(r => r.path !== 'admin').map(r => `${BASE_URL}/${r.path}/`)
 ];
 
+async function sbFetch(tablePath) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${tablePath}`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+    }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${tablePath}`);
+  return res.json();
+}
+
 try {
-  const { data: cols } = await supabase.from('collections').select('*').eq('is_published', true).order('sort_order');
-  const { data: works } = await supabase.from('works').select('collection_id, image_urls').eq('is_published', true).order('sort_order');
+  const [cols, works] = await Promise.all([
+    sbFetch('collections?select=*&is_published=eq.true&order=sort_order'),
+    sbFetch('works?select=collection_id,image_urls&is_published=eq.true&order=sort_order')
+  ]);
 
   for (const col of cols || []) {
     const firstWork = (works || []).find(w => w.collection_id === col.id);
