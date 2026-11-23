@@ -1,6 +1,15 @@
 import './styles/main.css';
 import { supabase, ensureAuthSession, getSavedProfile, saveVisitorProfile } from './lib/supabase.js';
 import { renderAdminPage } from './admin.js';
+import { renderGamePage, startNewGame } from './game.js';
+
+const PHOTO_CHAPTERS = [
+  { key: 'all', ar: 'كل الفصول', en: 'All Chapters' },
+  { key: 'river', ar: 'نهرٌ وسماء', en: 'River & Sky' },
+  { key: 'table', ar: 'طاولةٌ وقهوة', en: 'Table & Cup' },
+  { key: 'night', ar: 'ليلٌ وحركة', en: 'Night & Motion' },
+  { key: 'small', ar: 'أشياءُ صغيرة', en: 'Small Things' }
+];
 
 const REACTION_TYPES = [
   { key: 'heart', labelEn: '❤️ Love', labelAr: '❤️ إعجاب' },
@@ -13,6 +22,9 @@ const REACTION_TYPES = [
 const state = {
   lang: localStorage.getItem('ahmed_visuals_lang') || 'ar',
   origin: 'all',
+  chapter: 'all',
+  searchQuery: '',
+  onlineCount: 1,
   collections: [],
   works: [],
   reactions: new Map(), // `${work_id}:${type}` -> count
@@ -97,6 +109,7 @@ function parseRoute() {
   if (parts[0] === 'collection' && parts[1]) return { page: 'collection', slug: parts[1] };
   if (parts[0] === 'work' && parts[1]) return { page: 'work', slug: parts[1] };
   if (parts[0] === 'about') return { page: 'about' };
+  if (parts[0] === 'game') return { page: 'game' };
   if (parts[0] === 'admin') return { page: 'admin' };
   return { page: 'home' };
 }
@@ -224,6 +237,22 @@ function subscribeRealtime() {
       }
     })
     .subscribe();
+
+  // Realtime Presence for live viewer count
+  const presenceKey = `visitor-${Math.random().toString(36).slice(2, 10)}`;
+  const presenceCh = supabase.channel('visuals-presence', { config: { presence: { key: presenceKey } } });
+  presenceCh
+    .on('presence', { event: 'sync' }, () => {
+      const count = Object.keys(presenceCh.presenceState()).length;
+      state.onlineCount = Math.max(1, count);
+      const badge = document.getElementById('presence-badge');
+      if (badge) badge.textContent = state.lang === 'ar' ? `🟢 ${state.onlineCount} يشاهد الآن` : `🟢 ${state.onlineCount} viewing`;
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceCh.track({ online_at: new Date().toISOString() });
+      }
+    });
 }
 
 async function openWork(work, pushHash = true) {
@@ -331,9 +360,11 @@ function renderHeader() {
         </a>
         <nav class="nav-links">
           <a href="#/" class="nav-link ${state.route.page === 'home' || state.route.page === 'collection' ? 'active' : ''}">${t('home')}</a>
+          <a href="#/game" class="nav-link ${state.route.page === 'game' ? 'active' : ''}">${state.lang === 'ar' ? 'إنسان أم آلة؟' : 'Human or AI?'}</a>
           <a href="#/about" class="nav-link ${state.route.page === 'about' ? 'active' : ''}">${t('about')}</a>
         </nav>
         <div class="header-actions">
+          <span id="presence-badge" class="pill-btn" style="font-size:0.76rem;cursor:default;">${state.lang === 'ar' ? `🟢 ${state.onlineCount} يشاهد الآن` : `🟢 ${state.onlineCount} viewing`}</span>
           <button id="lang-toggle" class="pill-btn" type="button">${state.lang === 'en' ? 'عربي' : 'EN'}</button>
           <button id="profile-btn" class="pill-btn" type="button">
             <img src="./icons/user.svg" class="icon" alt="" />
@@ -387,20 +418,29 @@ function renderWorkCard(w) {
 
 function renderHome() {
   const featured = state.works.filter(w => w.is_featured).slice(0, 8);
-  const filteredWorks = state.origin === 'all'
-    ? []
-    : state.works.filter(w => w.origin === state.origin);
+  const q = state.searchQuery.trim().toLowerCase();
+  const filteredWorks = q
+    ? state.works.filter(w =>
+        (state.origin === 'all' || w.origin === state.origin) &&
+        (`${w.title_ar} ${w.title_en} ${(w.themes || []).join(' ')}`.toLowerCase().includes(q))
+      )
+    : state.origin === 'all'
+      ? []
+      : state.works.filter(w => w.origin === state.origin);
 
   return `
     <section class="hero container">
       <span class="hero-eyebrow">${t('heroEyebrow')}</span>
       <h1 class="hero-title">${t('heroTitle')}</h1>
       <p class="hero-sub">${t('heroSub')}</p>
+      <div style="max-width:460px;margin:0 auto 20px;">
+        <input id="global-search" class="input" style="width:100%;text-align:center;" type="search" placeholder="${state.lang === 'ar' ? 'ابحث في 505 عملاً...' : 'Search 505 works...'}" value="${escHtml(state.searchQuery)}" />
+      </div>
       ${renderOriginFilter()}
     </section>
 
     <section class="container">
-      ${state.origin === 'all' ? `
+      ${state.origin === 'all' && !q ? `
         ${featured.length ? `
           <div class="section-head">
             <h2 class="section-title">${t('featuredTitle')}</h2>
@@ -452,6 +492,9 @@ function renderCollection(slug) {
   if (state.origin !== 'all') {
     works = works.filter(w => w.origin === state.origin);
   }
+  if (slug === 'photography' && state.chapter !== 'all') {
+    works = works.filter(w => (w.themes || []).includes(state.chapter));
+  }
 
   const name = state.lang === 'ar' ? col.title_ar : col.title_en;
   const desc = state.lang === 'ar' ? col.description_ar : col.description_en;
@@ -465,7 +508,15 @@ function renderCollection(slug) {
         <h1 class="hero-title" style="font-size:clamp(2rem,4vw,3rem);margin:0;">${escHtml(name)}</h1>
         <p style="color:var(--muted);max-width:680px;">${escHtml(desc)}</p>
       </div>
-      ${renderOriginFilter()}
+      ${slug === 'photography' ? `
+        <div class="filter-bar" style="margin-bottom:20px;">
+          ${PHOTO_CHAPTERS.map(ch => `
+            <button class="pill-btn ${state.chapter === ch.key ? 'active' : ''}" data-chapter="${ch.key}" type="button">
+              ${state.lang === 'ar' ? ch.ar : ch.en}
+            </button>
+          `).join('')}
+        </div>
+      ` : renderOriginFilter()}
       <div class="masonry-grid">
         ${works.length ? works.map(renderWorkCard).join('') : `<p style="color:var(--muted)">${t('noWorks')}</p>`}
       </div>
@@ -570,6 +621,8 @@ function render() {
     mainHtml = renderCollection(state.route.slug);
   } else if (state.route.page === 'about') {
     mainHtml = renderAbout();
+  } else if (state.route.page === 'game') {
+    mainHtml = '<div id="game-root"></div>';
   } else if (state.route.page === 'admin') {
     mainHtml = '<div id="admin-root"></div>';
   } else {
@@ -588,6 +641,23 @@ function render() {
   if (state.route.page === 'admin') {
     renderAdminPage(document.getElementById('admin-root'), state, loadData);
   }
+  if (state.route.page === 'game') {
+    renderGamePage(document.getElementById('game-root'), state);
+  }
+
+  document.getElementById('global-search')?.addEventListener('input', (e) => {
+    state.searchQuery = e.target.value;
+    render();
+    const inp = document.getElementById('global-search');
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  });
+
+  document.querySelectorAll('[data-chapter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.chapter = btn.dataset.chapter;
+      render();
+    });
+  });
 
   document.getElementById('lang-toggle')?.addEventListener('click', () => setLang(state.lang === 'en' ? 'ar' : 'en'));
   document.getElementById('profile-btn')?.addEventListener('click', () => showProfileModal());
