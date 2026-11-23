@@ -261,6 +261,7 @@ async function openWork(work, pushHash = true) {
     window.location.hash = `#/work/${work.slug}`;
   }
   document.title = `${state.lang === 'ar' ? work.title_ar : work.title_en} - ${t('brand')}`;
+  supabase.rpc('increment_work_view', { target_work_id: work.id }).then(() => {});
   const { data } = await supabase
     .from('comments')
     .select('id, body, created_at, profile_id, profiles(display_name)')
@@ -535,7 +536,7 @@ function renderAbout() {
           <a href="https://www.facebook.com/ahmedissam.personal" target="_blank" rel="noopener" class="pill-btn">Facebook ↗</a>
           <a href="https://www.instagram.com/ahmdesam96" target="_blank" rel="noopener" class="pill-btn">Instagram @ahmdesam96 ↗</a>
           <a href="https://www.linkedin.com/in/ahmedissamramadan" target="_blank" rel="noopener" class="pill-btn">LinkedIn ↗</a>
-          <a href="https://linkie.bio/ahmedissam" target="_blank" rel="noopener" class="pill-btn">linkie.bio ↗</a>
+          <a href="https://linkie.bio/ahmedissam.personal" target="_blank" rel="noopener" class="pill-btn">linkie.bio ↗</a>
         </div>
       </div>
     </section>
@@ -707,6 +708,24 @@ window.addEventListener('hashchange', () => {
     render();
   }
 });
+
+document.addEventListener('keydown', (e) => {
+  if (!state.activeWork) return;
+  if (e.key === 'Escape') { closeWork(); return; }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const idx = state.works.findIndex(w => w.id === state.activeWork.id);
+    if (idx === -1) return;
+    const step = e.key === 'ArrowRight' ? 1 : -1;
+    const next = state.works[(idx + step + state.works.length) % state.works.length];
+    if (next) openWork(next);
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 
 document.documentElement.lang = state.lang;
 document.documentElement.dir = state.lang === 'ar' ? 'rtl' : 'ltr';

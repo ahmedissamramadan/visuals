@@ -1,9 +1,13 @@
-// "Human or Machine?" 10-Round Guessing Game
+import { supabase } from './lib/supabase.js';
+
+// "Human or Machine?" 10-Round Guessing Game + Global Leaderboard
 const gameState = {
   rounds: [],
   index: 0,
   score: 0,
-  answered: null // { guess, correct }
+  answered: null, // { guess, correct }
+  savedScore: false,
+  leaderboard: []
 };
 
 function shuffle(arr) {
@@ -23,9 +27,20 @@ export function startNewGame(works) {
   gameState.index = 0;
   gameState.score = 0;
   gameState.answered = null;
+  gameState.savedScore = false;
 }
 
-export function renderGamePage(container, state) {
+async function fetchLeaderboard() {
+  const { data } = await supabase
+    .from('game_scores')
+    .select('player_name, score, total_rounds, created_at')
+    .order('score', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(10);
+  gameState.leaderboard = data || [];
+}
+
+export async function renderGamePage(container, state) {
   const isAr = state.lang === 'ar';
   if (!gameState.rounds.length && state.works.length) {
     startNewGame(state.works);
@@ -36,8 +51,9 @@ export function renderGamePage(container, state) {
     return;
   }
 
-  // Game Over
+  // Game Over + Global Leaderboard
   if (gameState.index >= gameState.rounds.length) {
+    await fetchLeaderboard();
     const total = gameState.rounds.length;
     const msg = gameState.score >= 8
       ? (isAr ? 'عين فنان حقيقية! تميز بين الضوء الطبيعي والذكاء الاصطناعي ببراعة.' : 'True artist eye! You spot the difference between camera light and AI effortlessly.')
@@ -46,18 +62,53 @@ export function renderGamePage(container, state) {
         : (isAr ? 'الآلة خدعتك هذه المرة! جرّب جولة جديدة.' : 'The machine fooled you this time! Try another round.');
 
     container.innerHTML = `
-      <section class="container" style="max-width:560px;margin:56px auto;">
-        <div class="about-card" style="margin:0;text-align:center;">
+      <section class="container" style="max-width:600px;margin:48px auto 72px;">
+        <div class="about-card" style="margin:0 0 24px 0;text-align:center;">
           <span class="hero-eyebrow">${isAr ? 'النتيجة النهائية' : 'Final Score'}</span>
           <h1 class="hero-title" style="font-size:3.5rem;margin:12px 0;">${gameState.score} / ${total}</h1>
-          <p style="color:var(--muted);margin-bottom:28px;">${msg}</p>
+          <p style="color:var(--muted);margin-bottom:20px;">${msg}</p>
+
+          ${!gameState.savedScore ? `
+            <form id="save-score-form" style="display:flex;gap:8px;max-width:360px;margin:0 auto 20px;">
+              <input id="lb-player-name" class="input" type="text" placeholder="${isAr ? 'اكتب اسمك للوحة الصدارة' : 'Your name for leaderboard'}" value="${state.profile?.display_name || ''}" maxlength="32" required />
+              <button class="pill-btn active" type="submit">${isAr ? 'حفظ' : 'Save'}</button>
+            </form>
+          ` : `<div style="color:var(--accent);font-size:0.9rem;margin-bottom:16px;">✓ ${isAr ? 'تم تسجيل نتيجتك في لوحة الصدارة!' : 'Score saved to leaderboard!'}</div>`}
+
           <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
             <button id="game-replay" class="pill-btn active" type="button">${isAr ? 'العب مرة أخرى' : 'Play Again'}</button>
             <a href="#/" class="pill-btn">${isAr ? 'العودة للمجموعات' : 'Back to Collections'}</a>
           </div>
         </div>
+
+        <div class="about-card" style="margin:0;">
+          <h2 style="font-size:1.15rem;margin-bottom:14px;">🏆 ${isAr ? 'لوحة الصدارة (أعلى 10)' : 'Global Leaderboard (Top 10)'}</h2>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${gameState.leaderboard.length ? gameState.leaderboard.map((row, idx) => `
+              <div class="comment-item" style="display:flex;justify-content:space-between;align-items:center;">
+                <span><strong>#${idx + 1}</strong> ${row.player_name}</span>
+                <span style="color:var(--accent);font-weight:700;">${row.score} / ${row.total_rounds}</span>
+              </div>
+            `).join('') : `<div style="color:var(--muted);font-size:0.9rem;">${isAr ? 'كن أول من يسجل نتيجته!' : 'Be the first on the leaderboard!'}</div>`}
+          </div>
+        </div>
       </section>
     `;
+
+    container.querySelector('#save-score-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = container.querySelector('#lb-player-name').value.trim();
+      if (!name) return;
+      await supabase.from('game_scores').insert({
+        profile_id: state.profile?.id || null,
+        player_name: name,
+        score: gameState.score,
+        total_rounds: total
+      });
+      gameState.savedScore = true;
+      renderGamePage(container, state);
+    });
+
     container.querySelector('#game-replay').onclick = () => {
       startNewGame(state.works);
       renderGamePage(container, state);
