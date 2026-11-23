@@ -52,7 +52,11 @@ export async function renderAdminPage(container, state, onRefresh) {
     container.querySelector('#admin-login-form').onsubmit = async (e) => {
       e.preventDefault();
       const rawUser = container.querySelector('#adm-user').value.trim();
-      const email = rawUser.toLowerCase() === 'boda890' ? 'bodykhaled5000@gmail.com' : rawUser;
+      const email = rawUser.toLowerCase() === 'boda890'
+        ? 'bodykhaled5000@gmail.com'
+        : rawUser.toLowerCase() === 'admin'
+          ? 'ahmedissam.personal@gmail.com'
+          : rawUser;
       const password = container.querySelector('#adm-pass').value;
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
