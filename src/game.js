@@ -1,11 +1,10 @@
 import { supabase } from './lib/supabase.js';
 
-// "Human or Machine?" 10-Round Guessing Game + Global Leaderboard
 const gameState = {
   rounds: [],
   index: 0,
   score: 0,
-  answered: null, // { guess, correct }
+  answered: null,
   savedScore: false,
   leaderboard: []
 };
@@ -40,7 +39,7 @@ async function fetchLeaderboard() {
   gameState.leaderboard = data || [];
 }
 
-export async function renderGamePage(container, state) {
+export async function renderGamePage(container, state, navigate) {
   const isAr = state.lang === 'ar';
   if (!gameState.rounds.length && state.works.length) {
     startNewGame(state.works);
@@ -51,7 +50,6 @@ export async function renderGamePage(container, state) {
     return;
   }
 
-  // Game Over + Global Leaderboard
   if (gameState.index >= gameState.rounds.length) {
     await fetchLeaderboard();
     const total = gameState.rounds.length;
@@ -64,7 +62,7 @@ export async function renderGamePage(container, state) {
     container.innerHTML = `
       <section class="container" style="max-width:600px;margin:48px auto 72px;">
         <div class="about-card" style="margin:0 0 24px 0;text-align:center;">
-          <span class="hero-eyebrow">${isAr ? 'النتيجة النهائية' : 'Final Score'}</span>
+          <span class="section-kicker">${isAr ? 'النتيجة النهائية' : 'Final Score'}</span>
           <h1 class="hero-title" style="font-size:3.5rem;margin:12px 0;">${gameState.score} / ${total}</h1>
           <p style="color:var(--muted);margin-bottom:20px;">${msg}</p>
 
@@ -73,21 +71,21 @@ export async function renderGamePage(container, state) {
               <input id="lb-player-name" class="input" type="text" placeholder="${isAr ? 'اكتب اسمك للوحة الصدارة' : 'Your name for leaderboard'}" value="${state.profile?.display_name || ''}" maxlength="32" required />
               <button class="pill-btn active" type="submit">${isAr ? 'حفظ' : 'Save'}</button>
             </form>
-          ` : `<div style="color:var(--accent);font-size:0.9rem;margin-bottom:16px;">✓ ${isAr ? 'تم تسجيل نتيجتك في لوحة الصدارة!' : 'Score saved to leaderboard!'}</div>`}
+          ` : `<div style="font-size:0.9rem;margin-bottom:16px;">✓ ${isAr ? 'تم تسجيل نتيجتك في لوحة الصدارة!' : 'Score saved to leaderboard!'}</div>`}
 
           <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
             <button id="game-replay" class="pill-btn active" type="button">${isAr ? 'العب مرة أخرى' : 'Play Again'}</button>
-            <a href="#/" class="pill-btn">${isAr ? 'العودة للمجموعات' : 'Back to Collections'}</a>
+            <a href="/visuals/" data-nav="/visuals/" class="pill-btn">${isAr ? 'العودة للرئيسية' : 'Back Home'}</a>
           </div>
         </div>
 
-        <div class="about-card" style="margin:0;">
+        <div class="about-card">
           <h2 style="font-size:1.15rem;margin-bottom:14px;">🏆 ${isAr ? 'لوحة الصدارة (أعلى 10)' : 'Global Leaderboard (Top 10)'}</h2>
           <div style="display:flex;flex-direction:column;gap:8px;">
             ${gameState.leaderboard.length ? gameState.leaderboard.map((row, idx) => `
               <div class="comment-item" style="display:flex;justify-content:space-between;align-items:center;">
                 <span><strong>#${idx + 1}</strong> ${row.player_name}</span>
-                <span style="color:var(--accent);font-weight:700;">${row.score} / ${row.total_rounds}</span>
+                <span style="font-weight:700;">${row.score} / ${row.total_rounds}</span>
               </div>
             `).join('') : `<div style="color:var(--muted);font-size:0.9rem;">${isAr ? 'كن أول من يسجل نتيجته!' : 'Be the first on the leaderboard!'}</div>`}
           </div>
@@ -106,12 +104,12 @@ export async function renderGamePage(container, state) {
         total_rounds: total
       });
       gameState.savedScore = true;
-      renderGamePage(container, state);
+      renderGamePage(container, state, navigate);
     });
 
     container.querySelector('#game-replay').onclick = () => {
       startNewGame(state.works);
-      renderGamePage(container, state);
+      renderGamePage(container, state, navigate);
     };
     return;
   }
@@ -125,13 +123,13 @@ export async function renderGamePage(container, state) {
     <section class="container" style="max-width:740px;margin:36px auto 72px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
         <div>
-          <span class="hero-eyebrow" style="margin:0;">${isAr ? 'لعبة إنسان أم آلة؟' : 'Human or Machine?'}</span>
+          <span class="section-kicker" style="margin:0;">${isAr ? 'تحدي: إنسان أم آلة؟' : 'Human or Machine?'}</span>
           <div style="font-size:0.9rem;color:var(--muted);">${isAr ? `الجولة ${gameState.index + 1} من ${gameState.rounds.length}` : `Round ${gameState.index + 1} of ${gameState.rounds.length}`}</div>
         </div>
         <div class="pill-btn active">${isAr ? `النتيجة: ${gameState.score}` : `Score: ${gameState.score}`}</div>
       </div>
 
-      <div class="about-card" style="margin:0;padding:20px;text-align:center;">
+      <div class="about-card" style="padding:20px;text-align:center;">
         <div style="background:#050507;border-radius:12px;overflow:hidden;margin-bottom:20px;max-height:520px;display:flex;align-items:center;justify-content:center;">
           <img src="${imgUrl}" alt="" style="max-height:520px;width:auto;object-fit:contain;" />
         </div>
@@ -143,15 +141,15 @@ export async function renderGamePage(container, state) {
           </div>
         ` : `
           <div style="margin-bottom:16px;">
-            <div style="font-size:1.15rem;font-weight:700;color:${ans.correct ? 'var(--accent)' : 'var(--danger)'};margin-bottom:6px;">
+            <div style="font-size:1.15rem;font-weight:700;color:${ans.correct ? '#22C55E' : 'var(--danger)'};margin-bottom:6px;">
               ${ans.correct ? (isAr ? 'إجابة صحيحة! ✓' : 'Correct! ✓') : (isAr ? 'إجابة خاطئة ✕' : 'Not quite ✕')}
             </div>
             <div style="color:var(--muted);font-size:0.92rem;">
-              ${title} - ${work.origin === 'camera' ? (isAr ? '📷 تصوير كاميرا' : '📷 Camera Photo') : (isAr ? '✨ ذكاء اصطناعي' : '✨ AI Plate')}
+              ${title} · ${work.origin === 'camera' ? (isAr ? '📷 تصوير كاميرا' : '📷 Camera Photo') : (isAr ? '✨ ذكاء اصطناعي' : '✨ AI Plate')}
             </div>
           </div>
           <button id="game-next" class="pill-btn active" style="padding:10px 26px;" type="button">
-            ${gameState.index + 1 < gameState.rounds.length ? (isAr ? 'التالي ←' : 'Next →') : (isAr ? 'عرض النتيجة' : 'See Results')}
+            ${gameState.index + 1 < gameState.rounds.length ? (isAr ? 'التالي' : 'Next') : (isAr ? 'عرض النتيجة' : 'See Results')}
           </button>
         `}
       </div>
@@ -163,7 +161,7 @@ export async function renderGamePage(container, state) {
       const correct = guess === work.origin;
       if (correct) gameState.score++;
       gameState.answered = { guess, correct };
-      renderGamePage(container, state);
+      renderGamePage(container, state, navigate);
     };
     container.querySelector('#guess-camera').onclick = () => handleGuess('camera');
     container.querySelector('#guess-ai').onclick = () => handleGuess('ai');
@@ -171,7 +169,7 @@ export async function renderGamePage(container, state) {
     container.querySelector('#game-next').onclick = () => {
       gameState.index++;
       gameState.answered = null;
-      renderGamePage(container, state);
+      renderGamePage(container, state, navigate);
     };
   }
 }

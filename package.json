@@ -1,11 +1,11 @@
 {
-  "name": "ahmed-ramadan-visuals",
-  "version": "1.0.0",
-  "description": "Ahmed Ramadan - Central Visual Home",
+  "name": "artelligence-visuals",
+  "version": "2.0.0",
+  "description": "Artelligence - Ahmed Issam Ramadan Encyclopedic Platform & Visual Home",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender-routes.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
