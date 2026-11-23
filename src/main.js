@@ -1,5 +1,6 @@
 import './styles/main.css';
 import { supabase, ensureAuthSession, getSavedProfile, saveVisitorProfile } from './lib/supabase.js';
+import { renderAdminPage } from './admin.js';
 
 const state = {
   lang: localStorage.getItem('ahmed_visuals_lang') || 'en',
@@ -87,6 +88,7 @@ function parseRoute() {
   if (parts[0] === 'collection' && parts[1]) return { page: 'collection', slug: parts[1] };
   if (parts[0] === 'work' && parts[1]) return { page: 'work', slug: parts[1] };
   if (parts[0] === 'about') return { page: 'about' };
+  if (parts[0] === 'admin') return { page: 'admin' };
   return { page: 'home' };
 }
 
@@ -497,6 +499,8 @@ function render() {
     mainHtml = renderCollection(state.route.slug);
   } else if (state.route.page === 'about') {
     mainHtml = renderAbout();
+  } else if (state.route.page === 'admin') {
+    mainHtml = '<div id="admin-root"></div>';
   } else {
     mainHtml = renderHome();
   }
@@ -509,6 +513,10 @@ function render() {
     </footer>
     ${renderLightbox()}
   `;
+
+  if (state.route.page === 'admin') {
+    renderAdminPage(document.getElementById('admin-root'), state, loadData);
+  }
 
   // Bind events
   document.getElementById('lang-toggle')?.addEventListener('click', () => setLang(state.lang === 'en' ? 'ar' : 'en'));
