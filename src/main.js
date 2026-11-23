@@ -2,14 +2,21 @@ import './styles/main.css';
 import { supabase, ensureAuthSession, getSavedProfile, saveVisitorProfile } from './lib/supabase.js';
 import { renderAdminPage } from './admin.js';
 
+const REACTION_TYPES = [
+  { key: 'heart', labelEn: '❤️ Love', labelAr: '❤️ إعجاب' },
+  { key: 'wahashni', labelEn: '🌙 Nostalgic', labelAr: '🌙 وحشني' },
+  { key: 'coffee', labelEn: '☕ Warm', labelAr: '☕ ريحتها قهوة' },
+  { key: 'me', labelEn: '🪞 This is me', labelAr: '🪞 ده أنا' },
+  { key: 'deep', labelEn: '✨ Deep', labelAr: '✨ مش فاهم بس حلو' }
+];
+
 const state = {
-  lang: localStorage.getItem('ahmed_visuals_lang') || 'en',
+  lang: localStorage.getItem('ahmed_visuals_lang') || 'ar',
   origin: 'all',
-  chapter: 'all',
   collections: [],
   works: [],
-  reactions: new Map(), // work_id -> count
-  userReactions: new Set(), // work_id
+  reactions: new Map(), // `${work_id}:${type}` -> count
+  userReactions: new Set(), // `${work_id}:${type}`
   profile: getSavedProfile(),
   activeWork: null,
   activeComments: [],
@@ -23,18 +30,19 @@ const T = {
     about: 'About',
     heroEyebrow: 'Central Visual Home',
     heroTitle: 'Light, Machine & Form',
-    heroSub: 'A unified archive of camera photography, AI-generated plates, brand identities, and visual experiments.',
+    heroSub: 'A curated visual archive of camera photography, AI-generated plates, brand identities, and design systems.',
     all: 'All',
     camera: '📷 Camera',
     ai: '✨ AI',
     design: '🎨 Design',
+    featuredTitle: 'Curated Spotlight',
     collectionsTitle: 'Collections',
     worksCount: (n) => `${n} works`,
     backToCollections: '← All Collections',
     openExternal: 'View on Behance ↗',
     copyLink: 'Share Link',
+    exportStory: 'Story Card (1080×1920)',
     copied: 'Copied!',
-    react: 'Like',
     comments: 'Comments',
     commentPlaceholder: 'Write a thought...',
     send: 'Send',
@@ -43,7 +51,7 @@ const T = {
     saveProfile: 'Continue',
     aboutTitle: 'About Ahmed Ramadan',
     aboutBio: 'Multidisciplinary builder, visual storyteller, and AI-native creator from Egypt. This space brings together my camera rolls, AI-generated visual essays, brand identities, and digital experiments in one home.',
-    footer: '© 2026 Ahmed Ramadan — Central Visual Home',
+    footer: '© 2026 Ahmed Ramadan - Central Visual Home',
     noWorks: 'No works match this filter yet.'
   },
   ar: {
@@ -52,18 +60,19 @@ const T = {
     about: 'عنّي',
     heroEyebrow: 'البيت البصري المركزي',
     heroTitle: 'الضوء، الآلة، والشكل',
-    heroSub: 'أرشيف موحد يجمع صور الكاميرا، اللوحات المولّدة بالذكاء الاصطناعي، الهويات البصرية، والتجارب التصميمية.',
+    heroSub: 'أرشيف بصري مُنتقى يجمع صور الكاميرا، اللوحات المولّدة بالذكاء الاصطناعي، الهويات البصرية، والأنظمة التصميمية.',
     all: 'الكل',
     camera: '📷 كاميرا',
     ai: '✨ ذكاء اصطناعي',
     design: '🎨 تصميم',
+    featuredTitle: 'مختارات المحرر',
     collectionsTitle: 'المجموعات',
     worksCount: (n) => `${n} عمل`,
     backToCollections: '→ كل المجموعات',
     openExternal: 'عرض على بيهانس ↗',
     copyLink: 'نسخ الرابط',
+    exportStory: 'بطاقة ستوري (1080×1920)',
     copied: 'تم النسخ!',
-    react: 'إعجاب',
     comments: 'التعليقات',
     commentPlaceholder: 'اكتب تعليقاً...',
     send: 'إرسال',
@@ -72,7 +81,7 @@ const T = {
     saveProfile: 'متابعة',
     aboutTitle: 'عن أحمد رمضان',
     aboutBio: 'صانع منتجات رقمية، ومصمم تجارب بصرية من مصر. يجمع هذا الموقع بين صوري الفوتوغرافية، ولوحات الذكاء الاصطناعي، والهويات التجارية، والتجارب البصرية في مكان واحد.',
-    footer: '© 2026 أحمد رمضان — البيت البصري المركزي',
+    footer: '© 2026 أحمد رمضان - البيت البصري المركزي',
     noWorks: 'لا توجد أعمال مطابقة لهذا الفلتر حالياً.'
   }
 };
@@ -122,11 +131,61 @@ function getWorkSrcset(work) {
   return parts.join(', ');
 }
 
+async function generateStoryCard(work) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0b0b0d';
+  ctx.fillRect(0, 0, 1080, 1920);
+  ctx.strokeStyle = 'rgba(200, 164, 110, 0.35)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(48, 48, 984, 1824);
+
+  // Load image
+  const imgUrl = getWorkImg(work, '1200');
+  const res = await fetch(imgUrl);
+  const blob = await res.blob();
+  const bmp = await createImageBitmap(blob);
+
+  const maxW = 900;
+  const maxH = 1280;
+  const scale = Math.min(maxW / bmp.width, maxH / bmp.height);
+  const drawW = Math.round(bmp.width * scale);
+  const drawH = Math.round(bmp.height * scale);
+  const drawX = Math.round((1080 - drawW) / 2);
+  const drawY = Math.round(180 + (maxH - drawH) / 2);
+  ctx.drawImage(bmp, drawX, drawY, drawW, drawH);
+
+  // Typography
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f3efe6';
+  ctx.font = '600 44px Cairo, Georgia, serif';
+  const title = state.lang === 'ar' ? (work.title_ar || work.title_en) : (work.title_en || work.title_ar);
+  ctx.fillText(title.slice(0, 42), 540, 1580);
+
+  ctx.fillStyle = '#c8a46e';
+  ctx.font = '500 28px Inter, Cairo, sans-serif';
+  ctx.fillText('AHMED RAMADAN - VISUALS', 540, 1660);
+
+  ctx.fillStyle = '#9a958c';
+  ctx.font = '400 22px Inter, sans-serif';
+  ctx.fillText('ahmedissamramadan.github.io/visuals', 540, 1715);
+
+  const outBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(outBlob);
+  a.download = `${work.slug}-story-1080x1920.png`;
+  a.click();
+}
+
 async function loadData() {
   const [{ data: cols }, { data: works }, { data: reacts }] = await Promise.all([
     supabase.from('collections').select('*').eq('is_published', true).order('sort_order'),
-    supabase.from('works').select('*').order('sort_order'),
-    supabase.from('reactions').select('work_id, profile_id')
+    supabase.from('works').select('*').eq('is_published', true).order('sort_order'),
+    supabase.from('reactions').select('work_id, profile_id, reaction_type')
   ]);
 
   state.collections = cols || [];
@@ -135,9 +194,11 @@ async function loadData() {
   state.userReactions = new Set();
 
   for (const r of reacts || []) {
-    state.reactions.set(r.work_id, (state.reactions.get(r.work_id) || 0) + 1);
+    const type = r.reaction_type || 'heart';
+    const key = `${r.work_id}:${type}`;
+    state.reactions.set(key, (state.reactions.get(key) || 0) + 1);
     if (state.profile && r.profile_id === state.profile.id) {
-      state.userReactions.add(r.work_id);
+      state.userReactions.add(key);
     }
   }
 
@@ -152,21 +213,8 @@ async function loadData() {
 function subscribeRealtime() {
   supabase
     .channel('visuals-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, (payload) => {
-      if (payload.eventType === 'INSERT') {
-        const wId = payload.new.work_id;
-        state.reactions.set(wId, (state.reactions.get(wId) || 0) + 1);
-        if (state.profile && payload.new.profile_id === state.profile.id) {
-          state.userReactions.add(wId);
-        }
-      } else if (payload.eventType === 'DELETE') {
-        const wId = payload.old.work_id;
-        state.reactions.set(wId, Math.max(0, (state.reactions.get(wId) || 1) - 1));
-        if (state.profile && payload.old.profile_id === state.profile.id) {
-          state.userReactions.delete(wId);
-        }
-      }
-      render();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, () => {
+      loadData();
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, async (payload) => {
       if (state.activeWork && payload.new.work_id === state.activeWork.id && !payload.new.is_hidden) {
@@ -183,7 +231,7 @@ async function openWork(work, pushHash = true) {
   if (pushHash) {
     window.location.hash = `#/work/${work.slug}`;
   }
-  document.title = `${state.lang === 'ar' ? work.title_ar : work.title_en} — ${t('brand')}`;
+  document.title = `${state.lang === 'ar' ? work.title_ar : work.title_en} - ${t('brand')}`;
   const { data } = await supabase
     .from('comments')
     .select('id, body, created_at, profile_id, profiles(display_name)')
@@ -197,26 +245,27 @@ async function openWork(work, pushHash = true) {
 function closeWork() {
   state.activeWork = null;
   state.activeComments = [];
-  document.title = `${t('brand')} — Visuals`;
+  document.title = `${t('brand')} - Visuals`;
   if (state.route.page === 'work') {
     window.location.hash = '#/';
   }
   render();
 }
 
-async function toggleReaction(workId) {
+async function toggleReaction(workId, reactionType = 'heart') {
   if (!state.profile) {
-    showProfileModal(() => toggleReaction(workId));
+    showProfileModal(() => toggleReaction(workId, reactionType));
     return;
   }
-  if (state.userReactions.has(workId)) {
-    await supabase.from('reactions').delete().eq('work_id', workId).eq('profile_id', state.profile.id);
-    state.userReactions.delete(workId);
-    state.reactions.set(workId, Math.max(0, (state.reactions.get(workId) || 1) - 1));
+  const key = `${workId}:${reactionType}`;
+  if (state.userReactions.has(key)) {
+    await supabase.from('reactions').delete().eq('work_id', workId).eq('profile_id', state.profile.id).eq('reaction_type', reactionType);
+    state.userReactions.delete(key);
+    state.reactions.set(key, Math.max(0, (state.reactions.get(key) || 1) - 1));
   } else {
-    await supabase.from('reactions').insert({ work_id: workId, profile_id: state.profile.id, reaction_type: 'heart' });
-    state.userReactions.add(workId);
-    state.reactions.set(workId, (state.reactions.get(workId) || 0) + 1);
+    await supabase.from('reactions').insert({ work_id: workId, profile_id: state.profile.id, reaction_type: reactionType });
+    state.userReactions.add(key);
+    state.reactions.set(key, (state.reactions.get(key) || 0) + 1);
   }
   render();
 }
@@ -337,6 +386,7 @@ function renderWorkCard(w) {
 }
 
 function renderHome() {
+  const featured = state.works.filter(w => w.is_featured).slice(0, 8);
   const filteredWorks = state.origin === 'all'
     ? []
     : state.works.filter(w => w.origin === state.origin);
@@ -351,6 +401,14 @@ function renderHome() {
 
     <section class="container">
       ${state.origin === 'all' ? `
+        ${featured.length ? `
+          <div class="section-head">
+            <h2 class="section-title">${t('featuredTitle')}</h2>
+          </div>
+          <div class="masonry-grid" style="margin-bottom:52px;">
+            ${featured.map(renderWorkCard).join('')}
+          </div>
+        ` : ''}
         <div class="section-head">
           <h2 class="section-title">${t('collectionsTitle')}</h2>
         </div>
@@ -438,8 +496,6 @@ function renderLightbox() {
   if (!w) return '';
   const title = state.lang === 'ar' ? (w.title_ar || w.title_en) : (w.title_en || w.title_ar);
   const fullImg = getWorkImg(w, '1200');
-  const count = state.reactions.get(w.id) || 0;
-  const liked = state.userReactions.has(w.id);
 
   return `
     <div id="lightbox" class="lightbox-backdrop">
@@ -459,13 +515,28 @@ function renderLightbox() {
           </div>
 
           <div class="lightbox-actions">
-            <button id="lb-react" class="pill-btn ${liked ? 'active' : ''}" type="button">
-              <img src="./icons/heart.svg" class="icon" alt="" />
-              <span>${count}</span>
-            </button>
+            ${REACTION_TYPES.map(rt => {
+              const key = `${w.id}:${rt.key}`;
+              const cnt = state.reactions.get(key) || 0;
+              const active = state.userReactions.has(key);
+              const label = state.lang === 'ar' ? rt.labelAr : rt.labelEn;
+              return `
+                <button class="pill-btn lb-react-btn ${active ? 'active' : ''}" data-rtype="${rt.key}" type="button">
+                  <span>${label}</span>
+                  ${cnt > 0 ? `<span style="font-weight:600">${cnt}</span>` : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="lightbox-actions">
             <button id="lb-share" class="pill-btn" type="button">
               <img src="./icons/share.svg" class="icon" alt="" />
               <span>${t('copyLink')}</span>
+            </button>
+            <button id="lb-story" class="pill-btn" type="button">
+              <img src="./icons/download.svg" class="icon" alt="" />
+              <span>${t('exportStory')}</span>
             </button>
             ${w.external_url ? `
               <a href="${escHtml(w.external_url)}" target="_blank" rel="noopener" class="pill-btn active">${t('openExternal')}</a>
@@ -518,7 +589,6 @@ function render() {
     renderAdminPage(document.getElementById('admin-root'), state, loadData);
   }
 
-  // Bind events
   document.getElementById('lang-toggle')?.addEventListener('click', () => setLang(state.lang === 'en' ? 'ar' : 'en'));
   document.getElementById('profile-btn')?.addEventListener('click', () => showProfileModal());
 
@@ -540,11 +610,14 @@ function render() {
   document.getElementById('lightbox')?.addEventListener('click', (e) => {
     if (e.target.id === 'lightbox') closeWork();
   });
-  document.getElementById('lb-react')?.addEventListener('click', () => toggleReaction(state.activeWork.id));
+  document.querySelectorAll('.lb-react-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleReaction(state.activeWork.id, btn.dataset.rtype));
+  });
   document.getElementById('lb-share')?.addEventListener('click', (e) => {
     navigator.clipboard?.writeText(window.location.href);
     e.currentTarget.querySelector('span').textContent = t('copied');
   });
+  document.getElementById('lb-story')?.addEventListener('click', () => generateStoryCard(state.activeWork));
   document.getElementById('lb-comment-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = document.getElementById('lb-comment-input');
@@ -565,7 +638,6 @@ window.addEventListener('hashchange', () => {
   }
 });
 
-// Init
 document.documentElement.lang = state.lang;
 document.documentElement.dir = state.lang === 'ar' ? 'rtl' : 'ltr';
 ensureAuthSession().then(() => {
