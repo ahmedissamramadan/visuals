@@ -43,7 +43,7 @@ export async function renderAdminPage(container, state, onRefresh) {
         <div class="about-card" style="margin:0;">
           <h1 class="section-title" style="margin-bottom:16px;">Admin Login</h1>
           <form id="admin-login-form" style="display:flex;flex-direction:column;gap:12px;">
-            <input id="adm-user" class="input" type="text" placeholder="Username (admin / boda890) or Email" required />
+            <input id="adm-user" class="input" type="text" placeholder="Username or Email" required />
             <input id="adm-pass" class="input" type="password" placeholder="Password" required />
             <div id="adm-err" style="color:var(--danger);font-size:0.85rem;"></div>
             <button class="pill-btn active" type="submit" style="justify-content:center;padding:10px;">Sign In</button>
