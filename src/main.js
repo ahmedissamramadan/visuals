@@ -1,10 +1,24 @@
 import './styles/main.css';
-import { supabase, ensureAuthSession, getSavedProfile, saveVisitorProfile } from './lib/supabase.js';
+import { supabase, ensureAuthSession, getSavedProfile, saveVisitorProfile, notifyLeadAlert } from './lib/supabase.js';
 import { renderAdminPage } from './admin.js';
 import { renderGamePage } from './game.js';
+import { renderSolutionsPage, bindSolutionsEvents } from './solutions.js';
+import {
+  ensureIconsCatalog,
+  renderPyramidSection,
+  bindPyramidEvents,
+  renderIconSystemLab,
+  bindIconLabEvents,
+  renderAcademyPage
+} from './pyramid.js';
 
-const BASE = '/visuals';
+const BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 const HEADSHOT_URL = 'https://owlglaqltdniywcprzab.supabase.co/storage/v1/object/public/visuals/brand/ahmed-headshot-480.webp';
+
+function pUrl(sub = '/') {
+  const clean = sub.startsWith('/') ? sub : `/${sub}`;
+  return `${BASE}${clean}` || '/';
+}
 
 const REACTION_TYPES = [
   { key: 'heart', labelEn: '❤️ Love', labelAr: '❤️ إعجاب' },
@@ -30,15 +44,14 @@ const PHOTO_CHAPTERS = [
   { key: 'small', ar: 'أشياءُ صغيرة', en: 'Small Things' }
 ];
 
-// Convert legacy #/... URLs to clean History API URLs
 if (window.location.hash.startsWith('#/')) {
   const cleanSub = window.location.hash.slice(1);
-  window.history.replaceState(null, '', `${BASE}${cleanSub}`);
+  window.history.replaceState(null, '', pUrl(cleanSub));
 }
 
 const state = {
-  lang: localStorage.getItem('ahmed_visuals_lang') || 'ar',
-  theme: localStorage.getItem('ahmed_visuals_theme') || 'dark',
+  lang: localStorage.getItem('artelligence_lang') || localStorage.getItem('ahmed_visuals_lang') || 'ar',
+  theme: localStorage.getItem('artelligence_theme') || localStorage.getItem('ahmed_visuals_theme') || 'dark',
   origin: 'all',
   chapter: 'all',
   showFullPhotoArchive: false,
@@ -47,6 +60,8 @@ const state = {
   works: [],
   caseStudies: [],
   mindNotes: [],
+  servicesOffers: [],
+  digitalProducts: [],
   reactions: new Map(),
   userReactions: new Set(),
   profile: getSavedProfile(),
@@ -61,23 +76,27 @@ const T = {
     brand: 'Ahmed Issam Ramadan',
     subBrand: 'Artelligence',
     home: 'Home',
-    cases: 'Case Studies',
-    mind: 'Inside My Mind',
-    game: 'Human or AI?',
-    bookCall: 'Book 15m Call',
-    availBadge: 'Available for SME AI & Brand Systems',
-    heroTitle: 'Turning messy daily operations into simple autonomous systems.',
-    heroSub: 'AI Business Transformation & Integration Consultant · Founder of Artelligence. One living home for my client case studies, live thinking, and visual explorations.',
-    exploreWork: 'Explore Client Work',
+    solutions: 'Solutions',
+    proof: 'Case Studies',
+    mind: 'Mind & Pyramid',
+    archive: 'Visual Archive',
+    academy: 'Apps & Academy',
+    lab: 'Interactive Lab',
+    bookCall: 'Free 2m Teardown',
+    availBadge: 'Business Transformation & AI Integration Consultant · Founder of Artelligence',
+    heroTitle: 'What eats your time every day, runs on its own.',
+    heroSub: 'I turn messy daily operations in factories, finishing firms, and growing SMEs into simple autonomous systems - backed by verified numbers and zero complexity.',
+    exploreSolutions: 'Request Free 2m Teardown',
+    exploreProof: 'Verified Case Studies',
     openMind: 'Enter My Mind',
     all: 'All',
     camera: '📷 Camera',
     ai: '✨ AI',
     design: '🎨 Design',
     worksCount: (n) => `${n} works`,
-    backHome: '← Back to Home',
+    backHome: '← Back Home',
     openExternal: 'Open Live ↗',
-    copyLink: 'Share Link',
+    copyLink: 'Copy Link',
     exportStory: 'Story Card (1080x1920)',
     copied: 'Copied!',
     comments: 'Comments',
@@ -92,14 +111,18 @@ const T = {
     brand: 'أحمد عصام رمضان',
     subBrand: 'Artelligence',
     home: 'الرئيسية',
-    cases: 'دراسات الحالة',
+    solutions: 'الحلول و Growth OS',
+    proof: 'خزينة الأدلة',
     mind: 'داخل عقلي',
-    game: 'إنسان أم آلة؟',
-    bookCall: 'احجز مكالمة 15 د',
-    availBadge: 'متاح للاستشارات وبناء أنظمة الذكاء الاصطناعي والهوية',
-    heroTitle: 'أحوّل الشغل اليومي المتلخبط لأنظمة بسيطة تشتغل لوحدها.',
-    heroSub: 'مستشار تحول الأعمال ودمج الذكاء الاصطناعي · مؤسس Artelligence. بيت واحد حي يجمع دراسات الحالة لعملائي، طريقة تفكيري، ومكتبتي البصرية.',
-    exploreWork: 'شاهد شغل العملاء',
+    archive: 'المتحف البصري',
+    academy: 'التطبيقات والأكاديمية',
+    lab: 'المختبر التفاعلي',
+    bookCall: 'اطلب تشريح دقيقتين',
+    availBadge: 'مستشار تحوّل الأعمال ودمج الذكاء الاصطناعي · مؤسس Artelligence',
+    heroTitle: 'اللي بياخد وقتك كل يوم، يشتغل لوحده.',
+    heroSub: 'أحوّل الشغل اليومي المتلخبط في الشركات الصغيرة والمتوسطة والمصانع وشركات التشطيبات لأنظمة بسيطة تشتغل لوحدها، بأرقام حقيقية ومن غير تعقيد.',
+    exploreSolutions: 'اطلب فيديو تشريح مجاني (دقيقتين)',
+    exploreProof: 'شاهد الأدلة ودراسات الحالة',
     openMind: 'ادخل عقلي',
     all: 'الكل',
     camera: '📷 كاميرا',
@@ -128,25 +151,33 @@ function t(key, ...args) {
 
 function parseRoute() {
   let path = window.location.pathname;
-  if (path.startsWith(BASE)) path = path.slice(BASE.length);
+  if (BASE && path.startsWith(BASE)) path = path.slice(BASE.length);
+  if (path.startsWith('/visuals')) path = path.slice('/visuals'.length);
   const parts = path.split('/').filter(Boolean);
-  if (parts[0] === 'collection' && parts[1]) return { page: 'collection', slug: parts[1] };
-  if (parts[0] === 'work' && parts[1]) return { page: 'work', slug: parts[1] };
-  if (parts[0] === 'mind') return { page: 'mind' };
-  if (parts[0] === 'case-studies') return { page: 'cases' };
-  if (parts[0] === 'about') return { page: 'mind' };
-  if (parts[0] === 'game') return { page: 'game' };
-  if (parts[0] === 'admin') return { page: 'admin' };
+  const p0 = (parts[0] || '').toLowerCase();
+
+  if (p0 === 'collection' && parts[1]) return { page: 'collection', slug: parts[1] };
+  if (p0 === 'work' && parts[1]) return { page: 'work', slug: parts[1] };
+  if (['solutions', 'services', 'artelligence', 'air'].includes(p0)) return { page: 'solutions' };
+  if (['proof', 'case-studies', 'portfolio'].includes(p0)) return { page: 'cases' };
+  if (['mind', 'ai-pyramid', 'about'].includes(p0)) return { page: 'mind' };
+  if (p0 === 'archive') return { page: 'archive' };
+  if (['academy', 'store', 'microsaas'].includes(p0)) return { page: 'academy' };
+  if (['lab', 'game'].includes(p0)) return { page: 'game' };
+  if (['studio', 'admin'].includes(p0)) return { page: 'admin' };
+  if (['contact', 'links'].includes(p0)) return { page: 'contact' };
   return { page: 'home' };
 }
 
-function navigate(fullPath) {
-  window.history.pushState(null, '', fullPath);
+function navigate(targetPath) {
+  const full = targetPath.startsWith('http') ? targetPath : pUrl(targetPath);
+  window.history.pushState(null, '', full);
   state.route = parseRoute();
   state.chapter = 'all';
   if (state.route.page !== 'work') state.activeWork = null;
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  render();
+  if (state.route.page === 'archive') ensureIconsCatalog().then(() => render());
+  else render();
 }
 
 function applyThemeAndLang() {
@@ -206,28 +237,40 @@ async function generateStoryCard(work) {
   ctx.font = '600 24px "IBM Plex Sans", sans-serif';
   ctx.fillText('ARTELLIGENCE · AHMED ISSAM RAMADAN', 540, 1655);
   ctx.font = '400 20px "IBM Plex Sans", sans-serif';
-  ctx.fillText('ahmedissamramadan.github.io/visuals', 540, 1705);
+  ctx.fillText('ahmedissamramadan.github.io', 540, 1705);
 
   const outBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(outBlob);
-  a.download = `${work.slug}-story-1080x1920.png`;
+  a.download = `${work.slug}-artelligence-story-1080x1920.png`;
   a.click();
 }
 
 async function loadData() {
-  const [{ data: cols }, { data: works }, { data: reacts }, { data: cases }, { data: notes }] = await Promise.all([
+  const [
+    { data: cols },
+    { data: works },
+    { data: reacts },
+    { data: cases },
+    { data: notes },
+    { data: offers },
+    { data: products }
+  ] = await Promise.all([
     supabase.from('collections').select('*').eq('is_published', true).order('sort_order'),
     supabase.from('works').select('*').eq('is_published', true).order('sort_order'),
     supabase.from('reactions').select('work_id, profile_id, reaction_type'),
     supabase.from('case_studies').select('*').eq('is_published', true).order('sort_order'),
-    supabase.from('mind_notes').select('*').eq('is_published', true).order('sort_order')
+    supabase.from('mind_notes').select('*').eq('is_published', true).order('sort_order'),
+    supabase.from('services_offers').select('*').eq('is_active', true).order('step_order'),
+    supabase.from('digital_products').select('*').eq('is_published', true).order('sort_order')
   ]);
 
   state.collections = cols || [];
   state.works = works || [];
   state.caseStudies = cases || [];
   state.mindNotes = notes || [];
+  state.servicesOffers = offers || [];
+  state.digitalProducts = products || [];
   state.reactions = new Map();
   state.userReactions = new Set();
 
@@ -237,6 +280,9 @@ async function loadData() {
     if (state.profile && r.profile_id === state.profile.id) state.userReactions.add(key);
   }
 
+  if (state.route.page === 'archive') {
+    await ensureIconsCatalog();
+  }
   if (state.route.page === 'work') {
     const found = state.works.find(w => w.slug === state.route.slug);
     if (found) await openWork(found, false);
@@ -246,9 +292,10 @@ async function loadData() {
 
 function subscribeRealtime() {
   supabase
-    .channel('artelligence-live')
+    .channel('artelligence-unified-live')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, () => loadData())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'mind_notes' }, () => loadData())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'case_studies' }, () => loadData())
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, async (payload) => {
       if (state.activeWork && payload.new.work_id === state.activeWork.id && !payload.new.is_hidden) {
         const { data: prof } = await supabase.from('profiles').select('display_name').eq('id', payload.new.profile_id).single();
@@ -261,7 +308,7 @@ function subscribeRealtime() {
 
 async function openWork(work, pushUrl = true) {
   state.activeWork = work;
-  if (pushUrl) window.history.pushState(null, '', `${BASE}/work/${work.slug}`);
+  if (pushUrl) window.history.pushState(null, '', pUrl(`/work/${work.slug}`));
   document.title = `${state.lang === 'ar' ? work.title_ar : work.title_en} · ${t('subBrand')}`;
   supabase.rpc('increment_work_view', { target_work_id: work.id }).then(() => {});
   const { data } = await supabase
@@ -278,7 +325,7 @@ function closeWork() {
   state.activeWork = null;
   state.activeComments = [];
   document.title = `${t('subBrand')} · ${t('brand')}`;
-  if (state.route.page === 'work') navigate(`${BASE}/`);
+  if (state.route.page === 'work') navigate('/archive');
   else render();
 }
 
@@ -348,24 +395,50 @@ function renderHeader() {
   return `
     <header class="site-header">
       <div class="container header-inner">
-        <a href="${BASE}/" data-nav="${BASE}/" class="brand">
-          <span class="brand-mark"><img src="${BASE}/brand/Artelligence_04_Symbol.svg" alt="" /></span>
+        <a href="${pUrl('/')}" data-nav="/" class="brand">
+          <span class="brand-mark"><img src="${pUrl('/dna/logos/Artelligence_04_Symbol.svg')}" alt="" /></span>
           <span>${t('subBrand')}</span>
-          <span style="color:var(--muted);font-weight:400;font-size:0.85rem;">· ${t('brand')}</span>
+          <span style="color:var(--muted);font-weight:400;font-size:0.82rem;">· ${t('brand')}</span>
         </a>
         <nav class="nav-links">
-          <a href="${BASE}/" data-nav="${BASE}/" class="nav-link ${p === 'home' || p === 'collection' ? 'active' : ''}">${t('home')}</a>
-          <a href="${BASE}/case-studies" data-nav="${BASE}/case-studies" class="nav-link ${p === 'cases' ? 'active' : ''}">${t('cases')}</a>
-          <a href="${BASE}/mind" data-nav="${BASE}/mind" class="nav-link ${p === 'mind' ? 'active' : ''}">${t('mind')}</a>
-          <a href="${BASE}/game" data-nav="${BASE}/game" class="nav-link ${p === 'game' ? 'active' : ''}">${t('game')}</a>
+          <a href="${pUrl('/')}" data-nav="/" class="nav-link ${p === 'home' ? 'active' : ''}">${t('home')}</a>
+          <a href="${pUrl('/solutions')}" data-nav="/solutions" class="nav-link ${p === 'solutions' ? 'active' : ''}">${t('solutions')}</a>
+          <a href="${pUrl('/proof')}" data-nav="/proof" class="nav-link ${p === 'cases' ? 'active' : ''}">${t('proof')}</a>
+          <a href="${pUrl('/mind')}" data-nav="/mind" class="nav-link ${p === 'mind' ? 'active' : ''}">${t('mind')}</a>
+          <a href="${pUrl('/archive')}" data-nav="/archive" class="nav-link ${p === 'archive' || p === 'collection' ? 'active' : ''}">${t('archive')}</a>
+          <a href="${pUrl('/academy')}" data-nav="/academy" class="nav-link ${p === 'academy' ? 'active' : ''}">${t('academy')}</a>
+          <a href="${pUrl('/lab')}" data-nav="/lab" class="nav-link ${p === 'game' ? 'active' : ''}">${t('lab')}</a>
         </nav>
         <div class="header-actions">
           <button id="theme-toggle" class="pill-btn" type="button" aria-label="Toggle theme">${state.theme === 'dark' ? '☀️' : '🌙'}</button>
           <button id="lang-toggle" class="pill-btn" type="button">${state.lang === 'en' ? 'عربي' : 'EN'}</button>
-          <a href="#contact" class="pill-btn active">${t('bookCall')}</a>
+          <a href="${pUrl('/solutions')}" data-nav="/solutions" class="pill-btn active hide-xs">${t('bookCall')}</a>
         </div>
       </div>
     </header>
+  `;
+}
+
+function renderMobileBottomNav() {
+  const p = state.route.page;
+  const isAr = state.lang === 'ar';
+  const items = [
+    { route: '/', active: p === 'home', icon: '●', ar: 'الرئيسية', en: 'Home' },
+    { route: '/solutions', active: p === 'solutions', icon: '⚡', ar: 'الحلول', en: 'Solutions' },
+    { route: '/proof', active: p === 'cases', icon: '✓', ar: 'الأدلة', en: 'Proof' },
+    { route: '/mind', active: p === 'mind', icon: '◈', ar: 'عقلي', en: 'Mind' },
+    { route: '/archive', active: p === 'archive' || p === 'collection', icon: '▣', ar: 'المتحف', en: 'Archive' },
+    { route: '/lab', active: p === 'game', icon: '◎', ar: 'المختبر', en: 'Lab' }
+  ];
+  return `
+    <nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
+      ${items.map(it => `
+        <a href="${pUrl(it.route)}" data-nav="${it.route}" class="mob-nav-item ${it.active ? 'active' : ''}">
+          <span class="mob-nav-ico">${it.icon}</span>
+          <span>${isAr ? it.ar : it.en}</span>
+        </a>
+      `).join('')}
+    </nav>
   `;
 }
 
@@ -390,7 +463,7 @@ function renderCollectionCard(c) {
   const metaText = medium ? `${escHtml(medium)} · ${t('worksCount', displayCount)}` : t('worksCount', displayCount);
 
   return `
-    <a href="${BASE}/collection/${escHtml(c.slug)}" data-nav="${BASE}/collection/${escHtml(c.slug)}" class="collection-card">
+    <a href="${pUrl(`/collection/${c.slug}`)}" data-nav="/collection/${escHtml(c.slug)}" class="collection-card">
       <div class="collection-cover">
         ${cover ? `<img src="${escHtml(cover)}" alt="" loading="lazy" />` : ''}
       </div>
@@ -431,23 +504,71 @@ function renderWorkCard(w) {
 
 function renderCaseCard(cs) {
   const isAr = state.lang === 'ar';
+  const displayTitle = cs.is_anonymized
+    ? (isAr ? (cs.anon_title_ar || cs.title_ar) : (cs.anon_title_en || cs.title_en))
+    : (isAr ? cs.title_ar : cs.title_en);
+  const delivs = isAr ? (cs.deliverables_ar || []) : (cs.deliverables_en || []);
+  const evNote = isAr ? cs.evidence_note_ar : cs.evidence_note_en;
+
   return `
     <article class="case-card">
       ${cs.cover_url ? `<div class="case-cover"><img src="${escHtml(cs.cover_url)}" alt="" loading="lazy" /></div>` : ''}
       <div class="case-body">
-        <div class="collection-meta">${escHtml(isAr ? cs.sector_ar : cs.sector_en)}</div>
-        <h3 style="font-size:1.18rem;font-weight:700;">${escHtml(isAr ? cs.title_ar : cs.title_en)}</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="collection-meta">${escHtml(isAr ? cs.sector_ar : cs.sector_en)}</div>
+          ${cs.is_illustrative ? `<span class="work-badge">${isAr ? 'سيناريو توضيحي' : 'Illustrative'}</span>` : `<span class="work-badge">${isAr ? 'دليل موثق ✓' : 'Verified Proof ✓'}</span>`}
+        </div>
+        <h3 style="font-size:1.18rem;font-weight:700;">${escHtml(displayTitle)}</h3>
         <div class="case-pso">
           <div><strong>${isAr ? 'المشكلة:' : 'Problem:'}</strong> ${escHtml(isAr ? cs.problem_ar : cs.problem_en)}</div>
-          <div><strong>${isAr ? 'الحل:' : 'Solution:'}</strong> ${escHtml(isAr ? cs.solution_ar : cs.solution_en)}</div>
-          <div><strong>${isAr ? 'النتيجة الموثقة:' : 'Verified Outcome:'}</strong> ${escHtml(isAr ? cs.outcome_ar : cs.outcome_en)}</div>
+          <div><strong>${isAr ? 'الحل المعماري:' : 'Architecture:'}</strong> ${escHtml(isAr ? cs.solution_ar : cs.solution_en)}</div>
+          <div><strong>${isAr ? 'المخرج الموثق:' : 'Verified Outcome:'}</strong> ${escHtml(isAr ? cs.outcome_ar : cs.outcome_en)}</div>
         </div>
+        ${delivs.length ? `
+          <ul class="offer-list" style="margin-top:6px;">
+            ${delivs.slice(0, 4).map(d => `<li><span>•</span><span>${escHtml(d)}</span></li>`).join('')}
+          </ul>
+        ` : ''}
+        ${evNote ? `<div style="font-size:0.76rem;color:var(--muted);padding-top:6px;border-top:1px dashed var(--border);">${escHtml(evNote)}</div>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:10px;">
-          ${cs.collection_slug ? `<a href="${BASE}/collection/${escHtml(cs.collection_slug)}" data-nav="${BASE}/collection/${escHtml(cs.collection_slug)}" class="pill-btn active">${isAr ? 'معاينة الأصول داخل التطبيق' : 'View Assets In-App'}</a>` : ''}
+          ${cs.collection_slug && !cs.is_anonymized ? `<a href="${pUrl(`/collection/${cs.collection_slug}`)}" data-nav="/collection/${escHtml(cs.collection_slug)}" class="pill-btn active">${isAr ? 'معاينة الهوية داخل التطبيق' : 'View System In-App'}</a>` : ''}
           ${cs.external_url ? `<a href="${escHtml(cs.external_url)}" target="_blank" rel="noopener" class="pill-btn">${t('openExternal')}</a>` : ''}
         </div>
       </div>
     </article>
+  `;
+}
+
+function renderTrustSignatures() {
+  const isAr = state.lang === 'ar';
+  return `
+    <section class="section-block container">
+      <div class="contact-grid">
+        <div class="about-card">
+          <span class="section-kicker">${isAr ? 'ميثاق الصدق التشغيلي' : 'OPERATIONAL INTEGRITY PACT'}</span>
+          <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:12px;">${isAr ? 'ما لا نفعله في Artelligence' : 'What We Never Do at Artelligence'}</h2>
+          <ul class="offer-list">
+            <li><span>✕</span><span>${isAr ? 'لا نؤلف أرقام عائد مالي أو قصص عملاء غير موثقة بملفات حقيقية.' : 'We never fabricate ROI figures or unverified client claims.'}</span></li>
+            <li><span>✕</span><span>${isAr ? 'لا نبيع اشتراكات أدوات ذكاء اصطناعي معقدة لا يحتاجها فريقك.' : 'We never push bloated AI tool stacks your team does not need.'}</span></li>
+            <li><span>✕</span><span>${isAr ? 'لا نطلب التزاماً شهرياً طويلاً قبل إثبات تحسن خط الأساس في أول 30 يوماً.' : 'We never lock clients into long retainers before proving 30-day baseline impact.'}</span></li>
+            <li><span>✕</span><span>${isAr ? 'لا نستبدل الفريق البشري ببوت أصم؛ المساعد الذكي يؤهّل الطلب ويحوّله لفريقك فوراً.' : 'We never trap buyers in robotic loops; our assistant qualifies and hands off to humans.'}</span></li>
+          </ul>
+        </div>
+
+        <div class="about-card">
+          <span class="section-kicker">${isAr ? 'من وراء هذه المنصة؟' : 'WHO BUILT THIS PLATFORM?'}</span>
+          <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:10px;">${isAr ? 'أحمد عصام رمضان · مؤسس Artelligence' : 'Ahmed Issam Ramadan · Founder of Artelligence'}</h2>
+          <p style="font-size:0.9rem;color:var(--muted);margin-bottom:12px;">
+            ${isAr
+              ? 'درست الحقوق في جامعة الزقازيق (دفعة 2022)، ولم أمارس المحاماة يوماً. علّمت نفسي التصميم والبرمجة وهندسة قواعد البيانات وأتمتة الذكاء الاصطناعي بالتطبيق العملي المباشر وبناء منتجات وأنظمة تعمل فعلياً على أرض الواقع.'
+              : 'Graduated with an LL.B. from Zagazig University (2022) and never practiced law. Self-taught across UI/UX, full-stack engineering, databases, and AI workflow automation by shipping real systems.'}
+          </p>
+          <p style="font-size:0.84rem;color:var(--muted);">
+            <strong>Business First. AI Where It Matters. Results Always.</strong>
+          </p>
+        </div>
+      </div>
+    </section>
   `;
 }
 
@@ -457,36 +578,35 @@ function renderContactSection() {
     <section id="contact" class="section-block container">
       <div class="section-head">
         <div>
-          <span class="section-kicker">05 · ${isAr ? 'تواصل مباشر' : 'DIRECT CONTACT'}</span>
-          <h2 class="section-title">${isAr ? 'احجز مكالمة استكشافية (15 دقيقة) أو أرسل تفاصيل مشروعك' : 'Book a 15-Min Discovery Call or Send a Brief'}</h2>
+          <span class="section-kicker">08 · ${isAr ? 'قنوات التواصل الرسمية الموحدة' : 'UNIFIED DIRECT CONTACT'}</span>
+          <h2 class="section-title">${isAr ? 'احجز مكالمة 15 دقيقة أو أرسل تفاصيل مشروعك مباشرة' : 'Book a 15-Min Call or Send Your Brief Directly'}</h2>
         </div>
       </div>
       <div class="contact-grid">
         <div class="about-card">
-          <h3 style="font-size:1.1rem;margin-bottom:10px;">${isAr ? 'قنوات التواصل المعتمدة' : 'Verified Direct Channels'}</h3>
-          <p style="color:var(--muted);font-size:0.92rem;margin-bottom:16px;">
-            ${isAr ? 'أعمل مباشرة مع أصحاب الشركات الصغيرة والمتوسطة في مصر والخليج، ومؤسسي المنتجات الرقمية.' : 'Working directly with SME founders in Egypt & GCC, and digital product teams.'}
+          <h3 style="font-size:1.1rem;margin-bottom:10px;">${isAr ? 'التواصل المباشر مع أحمد عصام رمضان' : 'Direct Verified Channels'}</h3>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px;">
+            ${isAr ? 'مستشار تحوّل الأعمال ودمج الذكاء الاصطناعي · مؤسس Artelligence. للتعاقدات في مصر والخليج والشراكات التقنية.' : 'Business Transformation & AI Integration Consultant · Founder of Artelligence. Serving Egypt & GCC.'}
           </p>
           <div style="display:flex;flex-direction:column;gap:10px;font-size:0.9rem;margin-bottom:18px;">
             <div><strong>Email:</strong> <a href="mailto:ahmedissam.work@gmail.com" style="text-decoration:underline;">ahmedissam.work@gmail.com</a></div>
-            <div><strong>WhatsApp (15m Call):</strong> <a href="https://wa.me/201501656010" target="_blank" rel="noopener" style="text-decoration:underline;">+20 150 165 6010</a></div>
+            <div><strong>WhatsApp (15m Call):</strong> <a href="https://wa.me/201501656010" target="_blank" rel="noopener" style="text-decoration:underline;" dir="ltr">+20 150 165 6010</a></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <a href="https://wa.me/201501656010" target="_blank" rel="noopener" class="pill-btn active">WhatsApp · 15m Call ↗</a>
             <a href="https://www.linkedin.com/in/ahmdesam96" target="_blank" rel="noopener" class="pill-btn">LinkedIn ↗</a>
-            <a href="https://www.behance.net/ahmedissam_personal" target="_blank" rel="noopener" class="pill-btn">Behance ↗</a>
             <a href="https://www.instagram.com/ahmdesam96" target="_blank" rel="noopener" class="pill-btn">Instagram ↗</a>
-            <a href="https://linkie.bio/ahmedissam.personal" target="_blank" rel="noopener" class="pill-btn">Linkie ↗</a>
+            <a href="${pUrl('/academy')}" data-nav="/academy" class="pill-btn">${isAr ? 'تحميل تطبيق الأندرويد ↓' : 'Android App ↓'}</a>
           </div>
         </div>
         <div class="about-card">
-          <h3 style="font-size:1.1rem;margin-bottom:12px;">${isAr ? 'أرسل رسالة مباشرة للوحة التحكم' : 'Send Direct In-App Brief'}</h3>
+          <h3 style="font-size:1.1rem;margin-bottom:12px;">${isAr ? 'رسالة فورية إلى مركز القيادة' : 'Instant Message to Command Studio'}</h3>
           <form id="inquiry-form" style="display:flex;flex-direction:column;gap:10px;">
-            <input id="inq-name" class="input" type="text" placeholder="${isAr ? 'الاسم' : 'Your Name'}" required />
-            <input id="inq-contact" class="input" type="text" placeholder="${isAr ? 'البريد الإلكتروني أو رقم الواتساب' : 'Email or WhatsApp'}" required />
-            <textarea id="inq-msg" class="input" rows="3" placeholder="${isAr ? 'ما الذي تود بناءه أو أتمتته؟' : 'What are you building or looking to automate?'}" required></textarea>
-            <button class="pill-btn active" type="submit" style="justify-content:center;">${isAr ? 'إرسال الرسالة الآن' : 'Send Message'}</button>
-            ${state.inquiryStatus ? `<div style="font-size:0.85rem;color:#22C55E;">${escHtml(state.inquiryStatus)}</div>` : ''}
+            <input id="inq-name" class="input" type="text" placeholder="${isAr ? 'الاسم الكريم' : 'Your Name'}" required />
+            <input id="inq-contact" class="input" type="text" placeholder="${isAr ? 'رقم الواتساب أو البريد الإلكتروني' : 'WhatsApp or Email'}" required />
+            <textarea id="inq-msg" class="input" rows="3" placeholder="${isAr ? 'ما النظام الذي تود بناءه أو المشكلة اليومية التي تريد حلها؟' : 'What daily bottleneck or system would you like to solve?'}" required></textarea>
+            <button class="pill-btn active" type="submit" style="justify-content:center;">${isAr ? 'إرسال الرسالة الآن' : 'Send Direct Message'}</button>
+            ${state.inquiryStatus ? `<div style="font-size:0.85rem;color:#10B981;font-weight:600;">${escHtml(state.inquiryStatus)}</div>` : ''}
           </form>
         </div>
       </div>
@@ -507,13 +627,11 @@ function renderHome() {
       : state.works.filter(w => w.origin === state.origin);
 
   const clientCols = state.collections.filter(c => c.category === 'client');
-  const personalCols = state.collections.filter(c => c.category === 'personal');
-  const eduCols = state.collections.filter(c => c.category === 'educational');
-
   const camSample = state.works.find(w => w.origin === 'camera');
   const aiSample = state.works.find(w => w.origin === 'ai');
 
   return `
+    <!-- 01 · Command Home & Audience Compass -->
     <section class="hero container">
       <div class="hero-grid">
         <div>
@@ -521,22 +639,41 @@ function renderHome() {
           <h1 class="hero-title">${t('heroTitle')}</h1>
           <p class="hero-sub">${t('heroSub')}</p>
           <div class="hero-cta-row">
-            <a href="#client-work" class="pill-btn active">${t('exploreWork')}</a>
-            <a href="${BASE}/mind" data-nav="${BASE}/mind" class="pill-btn">${t('openMind')}</a>
-            <a href="https://wa.me/201501656010" target="_blank" rel="noopener" class="pill-btn">${t('bookCall')} ↗</a>
+            <a href="${pUrl('/solutions')}" data-nav="/solutions" class="pill-btn active">${t('exploreSolutions')}</a>
+            <a href="${pUrl('/proof')}" data-nav="/proof" class="pill-btn">${t('exploreProof')}</a>
+            <a href="${pUrl('/mind')}" data-nav="/mind" class="pill-btn">${t('openMind')}</a>
           </div>
           <div style="max-width:480px;margin-bottom:14px;">
-            <input id="global-search" class="input" type="search" placeholder="${isAr ? 'ابحث في الأعمال والأنظمة...' : 'Search works & systems...'}" value="${escHtml(state.searchQuery)}" />
+            <input id="global-search" class="input" type="search" placeholder="${isAr ? 'ابحث في الأنظمة، دراسات الحالة، والأعمال البصرية...' : 'Search systems, case studies & visual works...'}" value="${escHtml(state.searchQuery)}" />
           </div>
           ${renderOriginFilter()}
         </div>
         <div class="hero-portrait-card">
           <img src="${HEADSHOT_URL}" alt="${t('brand')}" class="hero-portrait-img" />
           <div style="font-size:0.86rem;color:var(--muted);">
-            <strong style="color:var(--text);display:block;margin-bottom:2px;">${t('brand')}</strong>
-            ${isAr ? 'ليسانس حقوق (2022) · علّمت نفسي التصميم والبرمجة والأتمتة بالتطبيق العملي.' : 'LL.B. (2022) · Self-taught product designer, systems builder & AI automation consultant.'}
+            <strong style="color:var(--text);display:block;margin-bottom:2px;">${t('brand')} · Artelligence</strong>
+            ${isAr ? 'ليسانس حقوق (2022) · باني أنظمة ذكاء اصطناعي ومنتجات رقمية وهويات بصرية بالتطبيق العملي.' : 'LL.B. (2022) · Self-taught AI systems architect, full-stack builder & visual director.'}
           </div>
         </div>
+      </div>
+
+      <!-- 3-Way Audience Compass -->
+      <div class="audience-grid" style="margin-top:32px;">
+        <a href="${pUrl('/solutions')}" data-nav="/solutions" class="audience-card">
+          <div class="collection-meta">PATH 01 · ${isAr ? 'لأصحاب المصانع وشركات التشطيب والـ SMEs' : 'FOR FACTORIES, FINISHING & SMES'}</div>
+          <h3>${isAr ? 'سُلّم الحلول وتأسيس Growth OS' : 'ABTI & Growth OS Solutions'}</h3>
+          <p>${isAr ? 'احصل على فيديو تشريح مجاني لحسابك في دقيقتين واكتشف كيف يعمل الرد والكتالوج والمحتوى لوحده.' : 'Get a free 2-minute video teardown and deploy autonomous catalog & WhatsApp systems.'}</p>
+        </a>
+        <a href="${pUrl('/proof')}" data-nav="/proof" class="audience-card">
+          <div class="collection-meta">PATH 02 · ${isAr ? 'لشركاء الأعمال وجهات الاستثمار والتوظيف' : 'FOR PARTNERS, INVESTORS & TEAMS'}</div>
+          <h3>${isAr ? 'خزينة الأدلة ودراسات الحالة الموثقة' : 'Verified Proof & Systems Vault'}</h3>
+          <p>${isAr ? 'استعرض الأنظمة الحية: منصة شبكة وَصْل، هوية KHEM في 7 أيام، منظومة التشطيبات، ومحرك 92 ريل.' : 'Inspect live production proof: WASL Network, KHEM 7-day brand system, and 92-reel pipelines.'}</p>
+        </a>
+        <a href="${pUrl('/archive')}" data-nav="/archive" class="audience-card">
+          <div class="collection-meta">PATH 03 · ${isAr ? 'للمبدعين والمهتمين بالفكر والفن البصري' : 'FOR CREATORS & VISUAL EXPLORERS'}</div>
+          <h3>${isAr ? 'داخل عقلي والمتحف البصري ومختبر الأيقونات' : 'Mind, Visual Archive & 216-Icon Lab'}</h3>
+          <p>${isAr ? 'هرم النضج في الذكاء الاصطناعي، 60 لوحة في الإنسان والآلة، الفوتوغرافيا، ومكتبة 216 أيقونة هندسية.' : 'AI Maturity Pyramid, 60 Human x Machine plates, curated photography, and 216 geometric icons.'}</p>
+        </a>
       </div>
     </section>
 
@@ -547,31 +684,52 @@ function renderHome() {
         </div>
       </section>
     ` : `
-      <!-- 01 · Client Work & Case Studies -->
+      <!-- 02 · Solutions Ladder Preview -->
+      <section class="section-block container">
+        <div class="section-head">
+          <div>
+            <span class="section-kicker">02 · ${isAr ? 'سُلّم واحد واضح لتحوّل الأعمال' : 'UNIFIED SERVICE LADDER'}</span>
+            <h2 class="section-title">${isAr ? 'من فيديو التشريح المجاني إلى نظام Growth OS المتكامل' : 'From Free 2-Min Teardown to Full Growth OS'}</h2>
+          </div>
+          <a href="${pUrl('/solutions')}" data-nav="/solutions" class="pill-btn active">${isAr ? 'افتح الحاسبة واطلب التشريح' : 'Open Calculator & Teardown'}</a>
+        </div>
+        <div class="offers-grid">
+          ${(state.servicesOffers || []).map((off, idx) => `
+            <article class="offer-card ${idx === 0 || idx === 2 ? 'offer-featured' : ''}">
+              <div class="collection-meta">${escHtml(isAr ? off.badge_ar : off.badge_en)}</div>
+              <h3 style="font-size:1.08rem;font-weight:700;margin:6px 0;">${escHtml(isAr ? off.title_ar : off.title_en)}</h3>
+              <div class="offer-price" style="font-size:1.1rem;">${escHtml(isAr ? off.price_egp_label : off.price_usd_label)}</div>
+              <p style="font-size:0.84rem;color:var(--muted);">${escHtml(isAr ? off.subtitle_ar : off.subtitle_en)}</p>
+            </article>
+          `).join('')}
+        </div>
+      </section>
+
+      <!-- 03 · Verified Proof & Client Systems -->
       <section id="client-work" class="section-block container">
         <div class="section-head">
           <div>
-            <span class="section-kicker">01 · ${isAr ? 'نتائج وشغل عملاء حقيقي' : 'VERIFIED CLIENT WORK'}</span>
-            <h2 class="section-title">${isAr ? 'دراسات الحالة والهويات التجارية' : 'Case Studies & Client Systems'}</h2>
+            <span class="section-kicker">03 · ${isAr ? 'أدلة حقيقية وشغل موثق' : 'VERIFIED EVIDENCE VAULT'}</span>
+            <h2 class="section-title">${isAr ? 'دراسات الحالة والأنظمة المبنية فعلياً' : 'Verified Case Studies & Brand Systems'}</h2>
           </div>
-          <a href="${BASE}/case-studies" data-nav="${BASE}/case-studies" class="pill-btn">${isAr ? 'عرض كل دراسات الحالة' : 'All Case Studies'}</a>
+          <a href="${pUrl('/proof')}" data-nav="/proof" class="pill-btn">${isAr ? 'كل الأدلة ودراسات الحالة' : 'All Case Studies'}</a>
         </div>
-        <div class="case-grid" style="margin-bottom:32px;">
-          ${state.caseStudies.slice(0, 3).map(renderCaseCard).join('')}
+        <div class="case-grid" style="margin-bottom:28px;">
+          ${state.caseStudies.filter(c => !c.is_illustrative).slice(0, 3).map(renderCaseCard).join('')}
         </div>
         <div class="collections-grid">
           ${clientCols.map(renderCollectionCard).join('')}
         </div>
       </section>
 
-      <!-- 02 · Inside My Mind & Live OS -->
+      <!-- 04 · Inside My Mind Preview -->
       <section class="section-block container">
         <div class="section-head">
           <div>
-            <span class="section-kicker">02 · ${isAr ? 'كيف أفكر وما أبنيه الآن' : 'MINDSET & OPERATING SYSTEM'}</span>
-            <h2 class="section-title">${isAr ? 'داخل عقلي والتركيز الحي' : 'Inside My Mind & Live Focus'}</h2>
+            <span class="section-kicker">04 · ${isAr ? 'كيف أفكر وما أبنيه الآن' : 'LIVE MIND & AI PYRAMID'}</span>
+            <h2 class="section-title">${isAr ? 'داخل عقلي والتركيز الحي' : 'Inside My Mind & Operating Principles'}</h2>
           </div>
-          <a href="${BASE}/mind" data-nav="${BASE}/mind" class="pill-btn">${isAr ? 'اقرأ الدليل الكامل' : 'Full Mind Archive'}</a>
+          <a href="${pUrl('/mind')}" data-nav="/mind" class="pill-btn">${isAr ? 'افتح عقلي وهرم الذكاء الاصطناعي' : 'Open Mind & AI Pyramid'}</a>
         </div>
         <div class="mind-grid">
           ${state.mindNotes.slice(0, 4).map(n => `
@@ -584,69 +742,80 @@ function renderHome() {
         </div>
       </section>
 
-      <!-- 03 · Personal, AI & Educational Explorations -->
-      <section class="section-block container">
-        <div class="section-head">
-          <div>
-            <span class="section-kicker">03 · ${isAr ? 'مختبر البصريات والفوتوغرافيا' : 'VISUAL ARCHIVE'}</span>
-            <h2 class="section-title">${isAr ? 'استكشافات فنية وذكاء اصطناعي' : 'Personal & AI Explorations'}</h2>
-          </div>
-        </div>
-        <div class="collections-grid">
-          ${personalCols.map(renderCollectionCard).join('')}
-        </div>
-
-        <div class="section-head" style="margin-top:24px;">
-          <div>
-            <span class="section-kicker">${isAr ? 'محتوى توعوي نفسي' : 'EDUCATIONAL SERIES'}</span>
-            <h3 style="font-size:1.25rem;font-weight:700;">${isAr ? 'السلاسل النفسية والمعرفية' : 'Visual Psychology & Mental Health'}</h3>
-          </div>
-        </div>
-        <div class="collections-grid">
-          ${eduCols.map(renderCollectionCard).join('')}
-        </div>
-      </section>
-
-      <!-- 04 · Prominent Human or AI Challenge -->
+      <!-- 07 · Interactive Lab Banner -->
       <section class="section-block container">
         <div class="game-banner">
           <div style="flex:1;min-width:260px;">
-            <span class="section-kicker">04 · ${isAr ? 'تجربة تفاعلية' : 'INTERACTIVE CHALLENGE'}</span>
-            <h2 class="section-title" style="margin-bottom:10px;">${isAr ? 'تحدي: هل تفرق بين الكاميرا والذكاء الاصطناعي؟' : 'Challenge: Can You Tell Human Camera from AI?'}</h2>
-            <p style="color:var(--muted);margin-bottom:18px;max-width:540px;">
-              ${isAr ? '10 جولات سريعة من صور الكاميرا ولوحات الإنسان والآلة. اختبر عينك وسجّل نتيجتك في لوحة الصدارة العالمية.' : '10 rapid rounds mixing raw camera photographs and AI plates. Test your eye and save your score on the global leaderboard.'}
+            <span class="section-kicker">07 · ${isAr ? 'المختبر التفاعلي' : 'INTERACTIVE LAB'}</span>
+            <h2 class="section-title" style="margin-bottom:10px;">${isAr ? 'تحدي «إنسان أم آلة؟» + فحص جاهزية شركتك للأتمتة' : 'Human or AI? Challenge + 2-Min SME Readiness Check'}</h2>
+            <p style="color:var(--muted);margin-bottom:18px;max-width:560px;">
+              ${isAr ? 'اختبر عينك في 10 جولات بين تصوير الكاميرا والذكاء الاصطناعي، أو افحص جاهزية نظام مبيعات شركتك في دقيقتين.' : 'Test your eye across 10 camera vs. AI rounds, or diagnose your company sales readiness in 2 minutes.'}
             </p>
-            <a href="${BASE}/game" data-nav="${BASE}/game" class="pill-btn active">${isAr ? 'ابدأ التحدي الآن' : 'Start 10-Round Challenge'}</a>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <a href="${pUrl('/lab')}" data-nav="/lab" class="pill-btn active">${isAr ? 'ادخل المختبر التفاعلي' : 'Enter Interactive Lab'}</a>
+              <a href="${pUrl('/archive')}" data-nav="/archive" class="pill-btn">${isAr ? 'استعرض المتحف البصري الكامل' : 'Explore Full Visual Archive'}</a>
+            </div>
           </div>
           <div style="display:flex;gap:12px;">
-            ${camSample ? `<img src="${escHtml(getWorkImg(camSample, '480'))}" alt="" style="width:120px;height:150px;object-fit:cover;border-radius:12px;border:1px solid var(--border);" loading="lazy" />` : ''}
-            ${aiSample ? `<img src="${escHtml(getWorkImg(aiSample, '480'))}" alt="" style="width:120px;height:150px;object-fit:cover;border-radius:12px;border:1px solid var(--border);" loading="lazy" />` : ''}
+            ${camSample ? `<img src="${escHtml(getWorkImg(camSample, '480'))}" alt="" style="width:116px;height:146px;object-fit:cover;border-radius:12px;border:1px solid var(--border);" loading="lazy" />` : ''}
+            ${aiSample ? `<img src="${escHtml(getWorkImg(aiSample, '480'))}" alt="" style="width:116px;height:146px;object-fit:cover;border-radius:12px;border:1px solid var(--border);" loading="lazy" />` : ''}
           </div>
         </div>
       </section>
+
+      ${renderTrustSignatures()}
     `}
 
     ${renderContactSection()}
   `;
 }
 
+function renderArchivePage() {
+  const isAr = state.lang === 'ar';
+  const clientCols = state.collections.filter(c => c.category === 'client');
+  const personalCols = state.collections.filter(c => c.category === 'personal');
+  const eduCols = state.collections.filter(c => c.category === 'educational');
+
+  return `
+    <section class="container" style="padding:40px 24px 72px;">
+      <span class="section-kicker">05 · ${isAr ? 'المتحف البصري ومختبر الهوية' : 'ARTELLIGENCE VISUAL ARCHIVE & ICON LAB'}</span>
+      <h1 class="hero-title">${isAr ? 'الهويات التجارية، الفوتوغرافيا، ولوحات الإنسان والآلة' : 'Client Identities, Curated Photography & AI Plates'}</h1>
+      <p class="hero-sub">${isAr ? 'مقسمة بوضوح بين أعمال العملاء، الاستكشافات البصرية والفوتوغرافية، السلاسل النفسية، ونظام الـ 216 أيقونة الهندسية.' : 'Structured across Client Systems, Personal Camera & AI Explorations, Visual Psychology, and the 216-Icon Geometric Lab.'}</p>
+
+      <div class="section-head" style="margin-top:28px;">
+        <h2 class="section-title">${isAr ? 'أعمال وهويات العملاء' : 'Client Brand Systems'}</h2>
+      </div>
+      <div class="collections-grid">${clientCols.map(renderCollectionCard).join('')}</div>
+
+      <div class="section-head" style="margin-top:28px;">
+        <h2 class="section-title">${isAr ? 'الاستكشافات الفنية والفوتوغرافيا' : 'Personal Camera & AI Explorations'}</h2>
+      </div>
+      <div class="collections-grid">${personalCols.map(renderCollectionCard).join('')}</div>
+
+      <div class="section-head" style="margin-top:28px;">
+        <h2 class="section-title">${isAr ? 'السلاسل النفسية والتوعوية' : 'Visual Psychology & Educational Series'}</h2>
+      </div>
+      <div class="collections-grid">${eduCols.map(renderCollectionCard).join('')}</div>
+
+      ${renderIconSystemLab(isAr)}
+    </section>
+  `;
+}
+
 function renderMindPage() {
   const isAr = state.lang === 'ar';
   const stages = [
-    { img: 'Artelligence_01_Point.svg', ar: '01 · النقطة', en: '01 · Point', descAr: 'الأصل والفكرة قبل أي أداة.', descEn: 'Origin and focus before any tool.' },
-    { img: 'Artelligence_02_Stroke.svg', ar: '02 · الضربة 56.9°', en: '02 · Stroke 56.9°', descAr: 'الحركة والنية البشرية الموجهة.', descEn: 'Human direction and intention.' },
-    { img: 'Artelligence_03_Form.svg', ar: '03 · الشكل', en: '03 · Form', descAr: 'هندسة الإبداع على شبكة 48px.', descEn: 'Creativity structured on a 48px grid.' },
-    { img: 'Artelligence_04_Symbol.svg', ar: '04 · الرمز', en: '04 · Symbol', descAr: 'تناغم الفن مع الذكاء الاصطناعي.', descEn: 'Harmony between Art and AI.' }
+    { img: 'Artelligence_01_Point.svg', ar: '01 · النقطة (Point)', en: '01 · Point', descAr: 'الأصل والتركيز. كل نظام يبدأ من نقطة حقيقية واحدة.', descEn: 'Origin and focus before any tool.' },
+    { img: 'Artelligence_02_Stroke.svg', ar: '02 · الضربة 56.9° (Stroke)', en: '02 · Stroke 56.9°', descAr: 'الحركة والنية البشرية الموجهة بزاوية 56.9 درجة.', descEn: 'Human direction at a 56.9° trajectory.' },
+    { img: 'Artelligence_03_Form.svg', ar: '03 · الشكل Ø22mm (Form)', en: '03 · Form Ø22mm', descAr: 'الإبداع حين يتحول لنظام هندسي على شبكة 48px.', descEn: 'Creativity structured on a 48px grid.' },
+    { img: 'Artelligence_04_Symbol.svg', ar: '04 · الرمز (Symbol)', en: '04 · Symbol', descAr: 'التناغم النهائي بين الفن والذكاء الاصطناعي والأثر.', descEn: 'Harmony between Art, Intelligence, and Impact.' }
   ];
 
   return `
-    <section class="container" style="padding:36px 24px 64px;">
-      <div style="margin-bottom:20px;">
-        <a href="${BASE}/" data-nav="${BASE}/" class="pill-btn">${t('backHome')}</a>
-      </div>
-      <span class="section-kicker">${isAr ? 'الوثيقة المرجعية الحية' : 'DIGITAL DNA & MINDSET'}</span>
-      <h1 class="hero-title">${isAr ? 'داخل عقلي ومنظومة Artelligence' : 'Inside My Mind & Artelligence OS'}</h1>
-      <p class="hero-sub">${isAr ? 'كل مبادئ الشغل، قصتي الحقيقية، هندسة التصميم، وتركيزي الحالي محدثة مباشرة من قاعدة البيانات.' : 'Verified operating principles, personal story, design geometry, and live focus synced directly from Supabase.'}</p>
+    <section class="container" style="padding:40px 24px 64px;">
+      <span class="section-kicker">04 · ${isAr ? 'العقل الحي والهرم المعرفي' : 'INSIDE MY MIND & AI MATURITY PYRAMID'}</span>
+      <h1 class="hero-title">${isAr ? 'داخل عقلي ومنظومة تفكير Artelligence' : 'Inside My Mind & Artelligence Operating Philosophy'}</h1>
+      <p class="hero-sub">${isAr ? 'مبادئ العمل، التفكيك البعدي، هرم النضج في الذكاء الاصطناعي، والتركيز الحالي متزامنة مباشرة مع قاعدة البيانات.' : 'Operating principles, post-mortem skill engineering, the AI Maturity Pyramid, and live focus synced from Supabase.'}</p>
 
       <div class="mind-grid" style="margin-bottom:36px;">
         ${state.mindNotes.map(n => `
@@ -658,11 +827,13 @@ function renderMindPage() {
         `).join('')}
       </div>
 
-      <h2 class="section-title" style="margin-bottom:12px;">${isAr ? 'مراحل الشعار والهندسة البصرية' : '4-Stage Logo & Visual Geometry'}</h2>
+      ${renderPyramidSection(isAr)}
+
+      <h2 class="section-title" style="margin-bottom:12px;">${isAr ? 'الفلسفة الهندسية لبناء Artelligence (النقطة <- الرمز)' : '4-Stage Geometric Philosophy (Point -> Symbol)'}</h2>
       <div class="geometry-grid" style="margin-bottom:36px;">
         ${stages.map(s => `
           <div class="geometry-card">
-            <img src="${BASE}/brand/${s.img}" alt="" />
+            <img src="${pUrl(`/dna/logos/${s.img}`)}" alt="" />
             <strong>${isAr ? s.ar : s.en}</strong>
             <span style="font-size:0.82rem;color:var(--muted);">${isAr ? s.descAr : s.descEn}</span>
           </div>
@@ -670,12 +841,12 @@ function renderMindPage() {
       </div>
 
       <div class="about-card">
-        <h2 style="font-size:1.15rem;margin-bottom:10px;">${isAr ? 'الستاك التقني والشهادات الموثقة' : 'Verified Tech Stack & Credentials'}</h2>
+        <h2 style="font-size:1.15rem;margin-bottom:10px;">${isAr ? 'الستاك التقني والخلفية الموثقة' : 'Verified Tech Stack & Background'}</h2>
         <p style="color:var(--muted);font-size:0.9rem;margin-bottom:10px;">
-          <strong>UI/UX:</strong> Figma, Stitch, Anima · <strong>Frontend:</strong> HTML, CSS, Tailwind CSS, JavaScript, TypeScript, React, Next.js · <strong>Backend & Automation:</strong> Node.js, Python, SQLite, Supabase PostgreSQL, n8n, Make.com, WhatsApp Business API.
+          <strong>UI/UX:</strong> Figma, Stitch, Anima · <strong>Frontend:</strong> HTML, CSS, Tailwind CSS, JavaScript, TypeScript, React, Next.js · <strong>Mobile & Desktop:</strong> Kotlin, Jetpack Compose, Electron macOS · <strong>Backend & Automation:</strong> Node.js, Python, SQLite, Supabase PostgreSQL, n8n, Make.com, Official WhatsApp Business API.
         </p>
         <p style="color:var(--muted);font-size:0.86rem;">
-          ${isAr ? 'التعليم: ليسانس الحقوق - جامعة الزقازيق (2022) · شهادات ALX: AI Career Essentials (AiCE) و Project Management Crash Course.' : 'Education: LL.B., Zagazig University (2022) · Earned ALX Certificates: AI Career Essentials (AiCE) & Project Management Crash Course.'}
+          ${isAr ? 'التعليم: ليسانس الحقوق - جامعة الزقازيق (2022)، بدون ممارسة للمحاماة، وتعلّم ذاتي تطبيقي كامل في التقنية · الشهادات المكتملة من ALX: AI Career Essentials (AiCE) و Project Management Crash Course.' : 'Education: Bachelor of Laws (LL.B.), Zagazig University (2022), never practiced law; 100% self-taught in software & AI systems · Earned ALX Certificates: AI Career Essentials (AiCE) & Project Management Crash Course.'}
         </p>
       </div>
     </section>
@@ -686,12 +857,14 @@ function renderMindPage() {
 function renderCasesPage() {
   const isAr = state.lang === 'ar';
   return `
-    <section class="container" style="padding:36px 24px 64px;">
-      <div style="margin-bottom:20px;">
-        <a href="${BASE}/" data-nav="${BASE}/" class="pill-btn">${t('backHome')}</a>
-      </div>
-      <span class="section-kicker">${isAr ? 'شغل حقيقي بأدلة موثقة' : 'CLIENT CASE STUDIES'}</span>
-      <h1 class="hero-title">${isAr ? 'دراسات الحالة: المشكلة، الحل، والنتيجة' : 'Case Studies: Problem, Solution, Outcome'}</h1>
+    <section class="container" style="padding:40px 24px 64px;">
+      <span class="section-kicker">03 · ${isAr ? 'سجل الأدلة الموثقة' : 'VERIFIED PROOF VAULT'}</span>
+      <h1 class="hero-title">${isAr ? 'دراسات الحالة: المشكلة، الحل المعماري، والدليل الموثق' : 'Case Studies: Problem, Architecture & Verified Evidence'}</h1>
+      <p class="hero-sub">
+        ${isAr
+          ? 'كل دراسة حالة أدناه مبنية على ملفات تسليم أو أنظمة إنتاج حية، مع فصل صريح بين أعمال العملاء الفعلية والسيناريوهات التوضيحية.'
+          : 'Every dossier below is backed by real production systems or verified deliverables, strictly separating client work from illustrative teardowns.'}
+      </p>
       <div class="case-grid" style="margin-top:24px;">
         ${state.caseStudies.map(renderCaseCard).join('')}
       </div>
@@ -703,7 +876,7 @@ function renderCasesPage() {
 function renderCollection(slug) {
   const isAr = state.lang === 'ar';
   const col = state.collections.find(c => c.slug === slug);
-  if (!col) return `<div class="container" style="padding:60px 24px"><a href="${BASE}/" data-nav="${BASE}/" class="pill-btn">${t('backHome')}</a></div>`;
+  if (!col) return `<div class="container" style="padding:60px 24px"><a href="${pUrl('/archive')}" data-nav="/archive" class="pill-btn">${t('backHome')}</a></div>`;
 
   let works = state.works.filter(w => w.collection_id === col.id);
 
@@ -723,7 +896,7 @@ function renderCollection(slug) {
   return `
     <section class="container" style="padding-top:36px;">
       <div style="margin-bottom:20px;">
-        <a href="${BASE}/" data-nav="${BASE}/" class="pill-btn">${t('backHome')}</a>
+        <a href="${pUrl('/archive')}" data-nav="/archive" class="pill-btn">← ${isAr ? 'العودة للمتحف البصري' : 'Back to Visual Archive'}</a>
       </div>
       <div class="section-head" style="flex-direction:column;gap:8px;margin-bottom:24px;">
         <span class="section-kicker">${escHtml(isAr ? col.medium_ar : col.medium_en)}</span>
@@ -822,23 +995,28 @@ function renderLightbox() {
 
 function renderFooter() {
   const isAr = state.lang === 'ar';
-  const eco = [
-    { label: 'WASL Network', url: 'https://wasl-network.com' },
-    { label: 'Artelligence OS', url: 'https://ahmedissamramadan.github.io/Artelligence-OS/' },
-    { label: 'AI Business Transformation', url: 'https://ahmedissamramadan.github.io/ai-business-transformation/' },
-    { label: 'AI Pyramid', url: 'https://ahmedissamramadan.github.io/ai-pyramid/' },
-    { label: 'AIR Calculator', url: 'https://ahmedissamramadan.github.io/air/' }
-  ];
   return `
     <footer class="site-footer">
       <div class="container">
-        <div style="font-weight:700;margin-bottom:10px;color:var(--text);">ARTELLIGENCE ECOSYSTEM</div>
-        <div class="eco-links">
-          ${eco.map(e => `<a href="${e.url}" target="_blank" rel="noopener" class="pill-btn" style="font-size:0.78rem;padding:5px 12px;">${e.label} ↗</a>`).join('')}
+        <!-- Signature 01: The Origin Dot Return Loop -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+          <span style="width:12px;height:12px;border-radius:50%;background:var(--accent);display:inline-block;"></span>
+          <span style="font-family:var(--font-mono);font-size:0.78rem;letter-spacing:0.08em;color:var(--text);">
+            ART • INTELLIGENCE • IMPACT · ${isAr ? 'نعود دائماً لنقطة الأصل' : 'ORIGIN LOOP COMPLETE'}
+          </span>
         </div>
-        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-          <span>${isAr ? '© 2026 أحمد عصام رمضان · Artelligence' : '© 2026 Ahmed Issam Ramadan · Artelligence'}</span>
-          <a href="${BASE}/admin" data-nav="${BASE}/admin" style="color:var(--muted);">${isAr ? 'لوحة الإدارة' : 'Admin Studio'}</a>
+
+        <div class="eco-links">
+          <a href="${pUrl('/solutions')}" data-nav="/solutions" class="pill-btn" style="font-size:0.78rem;padding:5px 12px;">${isAr ? 'سُلّم Growth OS' : 'Growth OS Ladder'}</a>
+          <a href="${pUrl('/proof')}" data-nav="/proof" class="pill-btn" style="font-size:0.78rem;padding:5px 12px;">${isAr ? 'خزينة الأدلة' : 'Proof Vault'}</a>
+          <a href="${pUrl('/academy')}" data-nav="/academy" class="pill-btn" style="font-size:0.78rem;padding:5px 12px;">${isAr ? 'تحميل تطبيق الأندرويد' : 'Android App'}</a>
+          <a href="https://wasl-network.com" target="_blank" rel="noopener" class="pill-btn" style="font-size:0.78rem;padding:5px 12px;">WASL Network ↗</a>
+          <a href="https://ahmedissamramadan.github.io/chronicle-2026/" target="_blank" rel="noopener" class="pill-btn" style="font-size:0.78rem;padding:5px 12px;">2026 Chronicle ↗</a>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center;">
+          <span>${isAr ? '© 2026 أحمد عصام رمضان · مؤسس Artelligence · جميع الحقوق محفوظة' : '© 2026 Ahmed Issam Ramadan · Founder of Artelligence'}</span>
+          <a href="${pUrl('/studio')}" data-nav="/studio" style="color:var(--muted);">${isAr ? 'مركز القيادة (Admin Studio)' : 'Command Studio'}</a>
         </div>
       </div>
     </footer>
@@ -848,17 +1026,26 @@ function renderFooter() {
 function render() {
   const app = document.getElementById('app');
   let mainHtml = '';
-  if (state.route.page === 'collection') mainHtml = renderCollection(state.route.slug);
-  else if (state.route.page === 'mind') mainHtml = renderMindPage();
-  else if (state.route.page === 'cases') mainHtml = renderCasesPage();
-  else if (state.route.page === 'game') mainHtml = '<div id="game-root"></div>';
-  else if (state.route.page === 'admin') mainHtml = '<div id="admin-root"></div>';
+  const page = state.route.page;
+
+  if (page === 'collection') mainHtml = renderCollection(state.route.slug);
+  else if (page === 'solutions') mainHtml = renderSolutionsPage(state);
+  else if (page === 'mind') mainHtml = renderMindPage();
+  else if (page === 'cases') mainHtml = renderCasesPage();
+  else if (page === 'archive') mainHtml = renderArchivePage();
+  else if (page === 'academy') mainHtml = renderAcademyPage(state);
+  else if (page === 'contact') mainHtml = renderContactSection();
+  else if (page === 'game') mainHtml = '<div id="game-root"></div>';
+  else if (page === 'admin') mainHtml = '<div id="admin-root"></div>';
   else mainHtml = renderHome();
 
-  app.innerHTML = `${renderHeader()}<main>${mainHtml}</main>${renderFooter()}${renderLightbox()}`;
+  app.innerHTML = `${renderHeader()}<main style="padding-bottom:68px;">${mainHtml}</main>${renderFooter()}${renderMobileBottomNav()}${renderLightbox()}`;
 
-  if (state.route.page === 'admin') renderAdminPage(document.getElementById('admin-root'), state, loadData);
-  if (state.route.page === 'game') renderGamePage(document.getElementById('game-root'), state, navigate);
+  if (page === 'admin') renderAdminPage(document.getElementById('admin-root'), state, loadData);
+  if (page === 'game') renderGamePage(document.getElementById('game-root'), state, navigate);
+  if (page === 'solutions') bindSolutionsEvents(state, render);
+  if (page === 'mind') bindPyramidEvents(render);
+  if (page === 'archive') bindIconLabEvents(render);
 
   document.querySelectorAll('[data-nav]').forEach(a => {
     a.addEventListener('click', (e) => {
@@ -869,14 +1056,14 @@ function render() {
 
   document.getElementById('lang-toggle')?.addEventListener('click', () => {
     state.lang = state.lang === 'en' ? 'ar' : 'en';
-    localStorage.setItem('ahmed_visuals_lang', state.lang);
+    localStorage.setItem('artelligence_lang', state.lang);
     applyThemeAndLang();
     render();
   });
 
   document.getElementById('theme-toggle')?.addEventListener('click', () => {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('ahmed_visuals_theme', state.theme);
+    localStorage.setItem('artelligence_theme', state.theme);
     applyThemeAndLang();
     render();
   });
@@ -916,9 +1103,14 @@ function render() {
     const msg = document.getElementById('inq-msg').value.trim();
     if (!name || !contact || !msg) return;
     const { error } = await supabase.from('inquiries').insert({ sender_name: name, sender_contact: contact, message: msg });
-    state.inquiryStatus = error
-      ? error.message
-      : (state.lang === 'ar' ? 'تم استلام رسالتك بنجاح! سأتواصل معك قريباً.' : 'Brief received! I will reach out shortly.');
+    if (error) {
+      state.inquiryStatus = error.message;
+    } else {
+      notifyLeadAlert('direct_inquiry', { sender_name: name, sender_contact: contact, message: msg });
+      state.inquiryStatus = state.lang === 'ar'
+        ? 'تم استلام رسالتك في مركز القيادة بنجاح! سأتواصل معك قريباً.'
+        : 'Brief received in Command Studio! I will reach out shortly.';
+    }
     render();
   });
 
@@ -948,7 +1140,8 @@ window.addEventListener('popstate', () => {
     if (found) openWork(found, false);
   } else {
     state.activeWork = null;
-    render();
+    if (state.route.page === 'archive') ensureIconsCatalog().then(() => render());
+    else render();
   }
 });
 
@@ -964,7 +1157,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register(`${BASE}/sw.js`).catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register(pUrl('/sw.js')).catch(() => {}));
 }
 
 applyThemeAndLang();

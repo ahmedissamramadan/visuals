@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/visuals/',
+  base: process.env.VITE_BASE_PATH || '/',
   build: {
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'art-assets'
   },
   server: {
     port: 3000

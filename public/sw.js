@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ahmed-visuals-v1';
-const CORE_ASSETS = ['./', './index.html', './favicon.svg', './manifest.webmanifest'];
+const CACHE_NAME = 'artelligence-unified-v2';
+const CORE_ASSETS = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest', '/dna/tokens.css'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -8,7 +8,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {

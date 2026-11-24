@@ -27,11 +27,21 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Build
+      - name: Validate Digital DNA & Build Legacy Bridge
         env:
+          VITE_BASE_PATH: '/visuals/'
+          SITE_ORIGIN: 'https://ahmedissamramadan.github.io/visuals'
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: npm run build
+        run: |
+          node scripts/dna-check.mjs
+          npm run build
+          node --input-type=commonjs -e '
+            const fs = require("fs"), path = require("path");
+            const redir = "<script>(function(){var p=location.pathname.replace(/^\\/visuals/,\"\")||\"/\";var m={\"/case-studies\":\"/proof\",\"/case-studies/\":\"/proof/\",\"/game\":\"/lab\",\"/game/\":\"/lab/\",\"/admin\":\"/studio\",\"/admin/\":\"/studio/\"};location.replace(\"https://ahmedissamramadan.github.io\"+(m[p]||p)+location.search+location.hash);})();</script>";
+            function patch(d){for(const f of fs.readdirSync(d)){const full=path.join(d,f);if(fs.statSync(full).isDirectory())patch(full);else if(f.endsWith(".html"))fs.writeFileSync(full,fs.readFileSync(full,"utf8").replace("<head>","<head>"+redir));}}
+            patch("dist");
+          '
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
