@@ -49,9 +49,27 @@ if (window.location.hash.startsWith('#/')) {
   window.history.replaceState(null, '', pUrl(cleanSub));
 }
 
+const FIGMA_THEMES = [
+  { id: 'obsidian', dot: '#0B0B0B', ring: '#FFFFFF', label: 'Obsidian' },
+  { id: 'acid', dot: '#D5FF5F', ring: '#181C19', label: 'Acid' },
+  { id: 'paper', dot: '#F2E8DA', ring: '#0B0B0B', label: 'Warm Paper' },
+  { id: 'cobalt', dot: '#244BEE', ring: '#EEF1FF', label: 'Cobalt' }
+];
+
+function normalizeTheme(raw) {
+  if (raw === 'dark') return 'obsidian';
+  if (raw === 'light') return 'paper';
+  if (FIGMA_THEMES.some(t => t.id === raw)) return raw;
+  return 'obsidian';
+}
+
+function artIco(file, cls = 'art-ico') {
+  return `<img src="${pUrl(`/dna/icons/${file}`)}" class="${cls}" alt="" aria-hidden="true" loading="lazy" />`;
+}
+
 const state = {
   lang: localStorage.getItem('artelligence_lang') || localStorage.getItem('ahmed_visuals_lang') || 'ar',
-  theme: localStorage.getItem('artelligence_theme') || localStorage.getItem('ahmed_visuals_theme') || 'dark',
+  theme: normalizeTheme(localStorage.getItem('artelligence_theme') || localStorage.getItem('ahmed_visuals_theme') || 'obsidian'),
   origin: 'all',
   chapter: 'all',
   showFullPhotoArchive: false,
@@ -90,9 +108,9 @@ const T = {
     exploreProof: 'Verified Case Studies',
     openMind: 'Enter My Mind',
     all: 'All',
-    camera: '📷 Camera',
-    ai: '✨ AI',
-    design: '🎨 Design',
+    camera: 'Camera',
+    ai: 'AI Plates',
+    design: 'Design',
     worksCount: (n) => `${n} works`,
     backHome: '← Back Home',
     openExternal: 'Open Live ↗',
@@ -125,9 +143,9 @@ const T = {
     exploreProof: 'شاهد الأدلة ودراسات الحالة',
     openMind: 'ادخل عقلي',
     all: 'الكل',
-    camera: '📷 كاميرا',
-    ai: '✨ ذكاء اصطناعي',
-    design: '🎨 تصميم',
+    camera: 'كاميرا',
+    ai: 'ذكاء اصطناعي',
+    design: 'تصميم وهوية',
     worksCount: (n) => `${n} عمل`,
     backHome: '→ العودة للرئيسية',
     openExternal: 'عرض مباشر ↗',
@@ -183,7 +201,8 @@ function navigate(targetPath) {
 function applyThemeAndLang() {
   document.documentElement.lang = state.lang;
   document.documentElement.dir = state.lang === 'ar' ? 'rtl' : 'ltr';
-  document.documentElement.classList.toggle('light-mode', state.theme === 'light');
+  document.documentElement.setAttribute('data-theme', state.theme);
+  document.documentElement.classList.toggle('light-mode', state.theme === 'paper');
 }
 
 function escHtml(str) {
@@ -410,7 +429,18 @@ function renderHeader() {
           <a href="${pUrl('/lab')}" data-nav="/lab" class="nav-link ${p === 'game' ? 'active' : ''}">${t('lab')}</a>
         </nav>
         <div class="header-actions">
-          <button id="theme-toggle" class="pill-btn" type="button" aria-label="Toggle theme">${state.theme === 'dark' ? '☀️' : '🌙'}</button>
+          <div class="theme-switcher" role="group" aria-label="Theme Palette">
+            ${FIGMA_THEMES.map(th => `
+              <button
+                class="theme-dot ${state.theme === th.id ? 'active' : ''}"
+                data-theme-pick="${th.id}"
+                type="button"
+                title="${th.label}"
+                aria-label="${th.label}"
+                style="background:${th.dot};border-color:${th.ring};"
+              ></button>
+            `).join('')}
+          </div>
           <button id="lang-toggle" class="pill-btn" type="button">${state.lang === 'en' ? 'عربي' : 'EN'}</button>
           <a href="${pUrl('/solutions')}" data-nav="/solutions" class="pill-btn active hide-xs">${t('bookCall')}</a>
         </div>
@@ -423,18 +453,18 @@ function renderMobileBottomNav() {
   const p = state.route.page;
   const isAr = state.lang === 'ar';
   const items = [
-    { route: '/', active: p === 'home', icon: '●', ar: 'الرئيسية', en: 'Home' },
-    { route: '/solutions', active: p === 'solutions', icon: '⚡', ar: 'الحلول', en: 'Solutions' },
-    { route: '/proof', active: p === 'cases', icon: '✓', ar: 'الأدلة', en: 'Proof' },
-    { route: '/mind', active: p === 'mind', icon: '◈', ar: 'عقلي', en: 'Mind' },
-    { route: '/archive', active: p === 'archive' || p === 'collection', icon: '▣', ar: 'المتحف', en: 'Archive' },
-    { route: '/lab', active: p === 'game', icon: '◎', ar: 'المختبر', en: 'Lab' }
+    { route: '/', active: p === 'home', icon: '060_home.svg', ar: 'الرئيسية', en: 'Home' },
+    { route: '/solutions', active: p === 'solutions', icon: '013_automation.svg', ar: 'الحلول', en: 'Solutions' },
+    { route: '/proof', active: p === 'cases', icon: '017_work.svg', ar: 'الأدلة', en: 'Proof' },
+    { route: '/mind', active: p === 'mind', icon: '040_knowledge.svg', ar: 'عقلي', en: 'Mind' },
+    { route: '/archive', active: p === 'archive' || p === 'collection', icon: '014_creative.svg', ar: 'المتحف', en: 'Archive' },
+    { route: '/lab', active: p === 'game', icon: '039_agents.svg', ar: 'المختبر', en: 'Lab' }
   ];
   return `
     <nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
       ${items.map(it => `
         <a href="${pUrl(it.route)}" data-nav="${it.route}" class="mob-nav-item ${it.active ? 'active' : ''}">
-          <span class="mob-nav-ico">${it.icon}</span>
+          ${artIco(it.icon, 'art-ico')}
           <span>${isAr ? it.ar : it.en}</span>
         </a>
       `).join('')}
@@ -657,20 +687,29 @@ function renderHome() {
         </div>
       </div>
 
-      <!-- 3-Way Audience Compass -->
+      <!-- 3-Way Audience Compass (Figma Icon System v2) -->
       <div class="audience-grid" style="margin-top:32px;">
         <a href="${pUrl('/solutions')}" data-nav="/solutions" class="audience-card">
-          <div class="collection-meta">PATH 01 · ${isAr ? 'لأصحاب المصانع وشركات التشطيب والـ SMEs' : 'FOR FACTORIES, FINISHING & SMES'}</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            ${artIco('013_automation.svg', 'art-ico-lg')}
+            <div class="collection-meta">PATH 01 · ${isAr ? 'لأصحاب المصانع وشركات التشطيب والـ SMEs' : 'FOR FACTORIES, FINISHING & SMES'}</div>
+          </div>
           <h3>${isAr ? 'سُلّم الحلول وتأسيس Growth OS' : 'ABTI & Growth OS Solutions'}</h3>
           <p>${isAr ? 'احصل على فيديو تشريح مجاني لحسابك في دقيقتين واكتشف كيف يعمل الرد والكتالوج والمحتوى لوحده.' : 'Get a free 2-minute video teardown and deploy autonomous catalog & WhatsApp systems.'}</p>
         </a>
         <a href="${pUrl('/proof')}" data-nav="/proof" class="audience-card">
-          <div class="collection-meta">PATH 02 · ${isAr ? 'لشركاء الأعمال وجهات الاستثمار والتوظيف' : 'FOR PARTNERS, INVESTORS & TEAMS'}</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            ${artIco('017_work.svg', 'art-ico-lg')}
+            <div class="collection-meta">PATH 02 · ${isAr ? 'لشركاء الأعمال وجهات الاستثمار والتوظيف' : 'FOR PARTNERS, INVESTORS & TEAMS'}</div>
+          </div>
           <h3>${isAr ? 'خزينة الأدلة ودراسات الحالة الموثقة' : 'Verified Proof & Systems Vault'}</h3>
           <p>${isAr ? 'استعرض الأنظمة الحية: منصة شبكة وَصْل، هوية KHEM في 7 أيام، منظومة التشطيبات، ومحرك 92 ريل.' : 'Inspect live production proof: WASL Network, KHEM 7-day brand system, and 92-reel pipelines.'}</p>
         </a>
         <a href="${pUrl('/archive')}" data-nav="/archive" class="audience-card">
-          <div class="collection-meta">PATH 03 · ${isAr ? 'للمبدعين والمهتمين بالفكر والفن البصري' : 'FOR CREATORS & VISUAL EXPLORERS'}</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            ${artIco('014_creative.svg', 'art-ico-lg')}
+            <div class="collection-meta">PATH 03 · ${isAr ? 'للمبدعين والمهتمين بالفكر والفن البصري' : 'FOR CREATORS & VISUAL EXPLORERS'}</div>
+          </div>
           <h3>${isAr ? 'داخل عقلي والمتحف البصري ومختبر الأيقونات' : 'Mind, Visual Archive & 216-Icon Lab'}</h3>
           <p>${isAr ? 'هرم النضج في الذكاء الاصطناعي، 60 لوحة في الإنسان والآلة، الفوتوغرافيا، ومكتبة 216 أيقونة هندسية.' : 'AI Maturity Pyramid, 60 Human x Machine plates, curated photography, and 216 geometric icons.'}</p>
         </a>
@@ -1061,11 +1100,13 @@ function render() {
     render();
   });
 
-  document.getElementById('theme-toggle')?.addEventListener('click', () => {
-    state.theme = state.theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('artelligence_theme', state.theme);
-    applyThemeAndLang();
-    render();
+  document.querySelectorAll('[data-theme-pick]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.theme = btn.dataset.themePick;
+      localStorage.setItem('artelligence_theme', state.theme);
+      applyThemeAndLang();
+      render();
+    });
   });
 
   document.getElementById('global-search')?.addEventListener('input', (e) => {
