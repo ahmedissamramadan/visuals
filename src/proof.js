@@ -94,32 +94,33 @@ export function renderProofVaultPage(state, pUrl) {
             </div>
           </article>
 
-          <!-- 3.2 WASL Network -->
-          <article class="case-card">
-            <div class="case-cover">
-              <img src="${pUrl('/assets/proof/wasl-cover.webp')}" alt="${isAr ? 'واجهة منصة WASL Network' : 'WASL Network platform banner'}" width="1200" height="669" loading="lazy" />
-            </div>
+          <!-- 3.2 WASL Network (Tasneem Ibrahim Official Identity: #6C4EF8 / #C8F05A / #202020) -->
+          <article class="case-card wasl-brand-card">
             <div class="case-body">
               <div class="proof-card-top">
-                <span class="proof-badge proof-badge-live">${badges.live}</span>
+                <span class="proof-badge wasl-badge">${badges.live}</span>
                 <span class="collection-meta">${isAr ? 'مشروعنا الخاص' : 'Own venture'}</span>
               </div>
               <h3 class="proof-card-title">${isAr ? bdi('WASL Network') : 'WASL Network'}</h3>
               <div class="case-pso">
-                <div><strong>${labels.problem}</strong> ${isAr ? 'ربط المؤسسين بالمستثمرين في المنطقة مشتت ويفتقر إلى فرز حقيقي يقلل الضوضاء.' : 'Co-founder and angel matchmaking in MENA is fragmented, with no vetting to filter noise.'}</div>
-                <div><strong>${labels.built}</strong> ${isAr ? 'منصة مطابقة حية تفحص ملف كل شركة ناشئة ومستثمر بمساعدة الذكاء الاصطناعي.' : 'A live matchmaking platform with AI-assisted vetting of every startup and investor profile.'}</div>
-                <div><strong>${labels.outcome}</strong> ${isAr ? '21 شركة ناشئة و141 جهة استثمارية مفحوصة ومتاحة على المنصة الآن.' : '21 vetted startups and 141 investor entities live on the platform.'}</div>
+                <div><strong>${labels.problem}</strong> ${isAr ? 'ربط المؤسسين الشركاء والمستثمرين في المنطقة مشتت ويفتقر إلى فرز حقيقي يقلل الضوضاء.' : 'Co-founder and angel matchmaking in MENA is fragmented, with no vetting to filter noise.'}</div>
+                <div><strong>${labels.built}</strong> ${isAr ? 'مجتمع مؤسسين حي يطابق الشركاء ذوي المهارات المتكاملة ويربط الشركات الناشئة بالمستثمرين، مع إخفاء بيانات التواصل حتى يوافق الطرفان.' : 'A live founder community that matches co-founders with complementary skills and connects startups with investors. Contacts stay hidden until interest is mutual.'}</div>
+                <div><strong>${labels.outcome}</strong> ${isAr ? 'أكثر من 120 مؤسساً معتمداً، و21 شركة ناشئة في الدليل، وأكثر من 140 مستثمراً وصندوقاً استثمارياً على المنصة.' : '120+ approved founders, 21 startups in the directory, and 140+ VCs and angel investors on the platform.'}</div>
               </div>
               <ul class="offer-list">
-                <li><span>•</span><span>${isAr ? `بالتعاون مع ${bdi('Prodstack')}.` : 'In collaboration with Prodstack.'}</span></li>
-                <li><span>•</span><span>${isAr ? 'مراجعة تلقائية للطلبات قبل السماح بالتصفح والتواصل.' : 'Automated profile vetting before granting directory and matching access.'}</span></li>
+                <li><span>•</span><span>${isAr ? `قفل الخصوصية المتبادل: البريد و${bdi('WhatsApp')} و${bdi('LinkedIn')} لا تُفتح إلا بموافقة الطرفين معاً.` : 'Mutual-interest privacy lock: email, WhatsApp, and LinkedIn unlock only when both sides opt in.'}</span></li>
+                <li><span>•</span><span>${isAr ? 'يُفحص كل ملف شخصي قبل منحه صلاحية دخول الدليل والمطابقة.' : 'Every profile is vetted before it gets directory and matching access.'}</span></li>
+                <li><span>•</span><span>${isAr ? `مزايا شركاء للأعضاء: إرشاد مجاني مع ${bdi('ICCY')} وظهور خاص في بودكاست ${bdi('Cash Talks')}.` : 'Partner perks for members: free mentorship with ICCY and a spotlight on the Cash Talks podcast.'}</span></li>
               </ul>
+              <div style="font-size:0.78rem;color:var(--muted);margin-top:6px;">
+                ${isAr ? 'الهوية البصرية: تسنيم إبراهيم' : 'Brand identity by Tasneem Ibrahim'}
+              </div>
               <div class="proof-actions">
-                <a href="https://wasl-network.com" target="_blank" rel="noopener" class="pill-btn active">${isAr ? 'زيارة المنصة ↗' : 'Open Live ↗'}</a>
+                <a href="https://wasl-network.com" target="_blank" rel="noopener" class="pill-btn wasl-cta-btn">${isAr ? 'زيارة المنصة ↗' : 'Open Live ↗'}</a>
               </div>
               <details class="proof-tech-details">
                 <summary>${labels.tech}</summary>
-                <p dir="ltr">Next.js 16, React 19, Tailwind v4, Supabase PostgreSQL + RLS, 35+ custom vector icons.</p>
+                <p dir="ltr">Next.js 16, React 19, Tailwind v4, Supabase PostgreSQL + RLS, 42-icon geometric duotone UI icon system.</p>
               </details>
             </div>
           </article>
