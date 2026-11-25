@@ -17,14 +17,18 @@ function esc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function writeRouteHtml(relPath, { title, desc, ogImage, canonical }) {
-  const html = templateHtml
+function writeRouteHtml(relPath, { title, desc, ogImage, canonical, lang = 'ar', dir = 'rtl', ogLocale = 'ar_EG', hreflangs = '' }) {
+  let html = templateHtml
+    .replace(/<html lang="[^"]*" dir="[^"]*"/, `<html lang="${lang}" dir="${dir}"`)
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${esc(desc)}" />`)
     .replace(/<meta property="og:title" content="[^"]*"\s*\/>/, `<meta property="og:title" content="${esc(title)}" />`)
     .replace(/<meta property="og:description" content="[^"]*"\s*\/>/, `<meta property="og:description" content="${esc(desc)}" />`)
     .replace(/<meta property="og:image" content="[^"]*"\s*\/>/, `<meta property="og:image" content="${esc(ogImage)}" />`)
     .replace(/<meta property="og:url" content="[^"]*"\s*\/>/, `<meta property="og:url" content="${esc(canonical)}" />`);
+
+  const extraMeta = `<meta property="og:locale" content="${ogLocale}" />${hreflangs}`;
+  html = html.replace('</head>', `${extraMeta}\n</head>`);
 
   const targetDir = path.join(distDir, relPath);
   fs.mkdirSync(targetDir, { recursive: true });
@@ -33,7 +37,9 @@ function writeRouteHtml(relPath, { title, desc, ogImage, canonical }) {
 
 const staticRoutes = [
   { path: 'solutions', title: 'الحلول وسُلّم Growth OS · Artelligence', desc: 'منهجية ABTI، حاسبة الاستفسارات الضائعة، وطلب فيديو تشريح مجاني (دقيقتين) للشركات والمصانع وشركات التشطيبات.', ogImage: DEFAULT_OG },
-  { path: 'proof', title: 'خزينة الأدلة ودراسات الحالة الموثقة · Artelligence', desc: 'مشكلات حقيقية وحلول معمارية موثقة: WASL Network، هوية KHEM في 7 أيام، منظومة التشطيبات، ومحرك 92 ريل.', ogImage: DEFAULT_OG },
+  { path: 'proof', title: 'أعمالنا وأنظمتنا: التحدي، ما بنيناه، والدليل · Artelligence', desc: 'أنظمة منشورة وأعمال عملاء وتجارب الاستوديو وتحليلات توضيحية.', ogImage: DEFAULT_OG, lang: 'ar', dir: 'rtl', ogLocale: 'ar_EG' },
+  { path: 'ar/proof', title: 'أعمالنا وأنظمتنا: التحدي، ما بنيناه، والدليل · Artelligence', desc: 'أنظمة منشورة وأعمال عملاء وتجارب الاستوديو وتحليلات توضيحية.', ogImage: DEFAULT_OG, lang: 'ar', dir: 'rtl', ogLocale: 'ar_EG', hreflangs: `<link rel="alternate" hreflang="ar" href="${BASE_URL}/ar/proof/" /><link rel="alternate" hreflang="en" href="${BASE_URL}/en/proof/" /><link rel="alternate" hreflang="x-default" href="${BASE_URL}/en/proof/" />` },
+  { path: 'en/proof', title: 'Case Studies: Problem, What We Built & Evidence · Artelligence', desc: 'Live systems, anonymized client work, studio explorations, and illustrative teardowns.', ogImage: DEFAULT_OG, lang: 'en', dir: 'ltr', ogLocale: 'en_US', hreflangs: `<link rel="alternate" hreflang="ar" href="${BASE_URL}/ar/proof/" /><link rel="alternate" hreflang="en" href="${BASE_URL}/en/proof/" /><link rel="alternate" hreflang="x-default" href="${BASE_URL}/en/proof/" />` },
   { path: 'mind', title: 'داخل عقلي وهرم الذكاء الاصطناعي · Artelligence', desc: 'مبادئ العمل، التفكيك البعدي، هرم النضج في الذكاء الاصطناعي، والتركيز الحي لأحمد عصام رمضان.', ogImage: DEFAULT_OG },
   { path: 'archive', title: 'المتحف البصري ومختبر الـ 216 أيقونة · Artelligence', desc: 'هويات العملاء، 60 لوحة في الإنسان والآلة، الفوتوغرافيا المنتقاة، ونظام الأيقونات الهندسي بزاوية 56.9 درجة.', ogImage: DEFAULT_OG },
   { path: 'academy', title: 'التطبيقات الرسمية والأكاديمية والأنظمة · Artelligence', desc: 'تحميل تطبيق Artelligence للأندرويد و macOS، واستعراض المناهج التفاعلية ومهارات الوكلاء المستقلين.', ogImage: DEFAULT_OG },
@@ -60,7 +66,11 @@ for (const r of staticRoutes) {
     title: r.title,
     desc: r.desc,
     ogImage: r.ogImage,
-    canonical: `${BASE_URL}/${r.path}/`
+    canonical: `${BASE_URL}/${r.path}/`,
+    lang: r.lang || 'ar',
+    dir: r.dir || 'rtl',
+    ogLocale: r.ogLocale || 'ar_EG',
+    hreflangs: r.hreflangs || ''
   });
 }
 

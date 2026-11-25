@@ -2,6 +2,7 @@ import './styles/main.css';
 import { supabase, ensureAuthSession, getSavedProfile, saveVisitorProfile, notifyLeadAlert } from './lib/supabase.js';
 import { renderAdminPage } from './admin.js';
 import { renderGamePage } from './game.js';
+import { renderProofVaultPage } from './proof.js';
 import { renderSolutionsPage, bindSolutionsEvents } from './solutions.js';
 import {
   ensureIconsCatalog,
@@ -172,7 +173,14 @@ function parseRoute() {
   if (BASE && path.startsWith(BASE)) path = path.slice(BASE.length);
   if (path.startsWith('/visuals')) path = path.slice('/visuals'.length);
   const parts = path.split('/').filter(Boolean);
-  const p0 = (parts[0] || '').toLowerCase();
+  let p0 = (parts[0] || '').toLowerCase();
+  if (p0 === 'ar' || p0 === 'en') {
+    state.lang = p0;
+    localStorage.setItem('artelligence_lang', p0);
+    p0 = (parts[1] || '').toLowerCase();
+    if (p0 === 'collection' && parts[2]) return { page: 'collection', slug: parts[2] };
+    if (p0 === 'work' && parts[2]) return { page: 'work', slug: parts[2] };
+  }
 
   if (p0 === 'collection' && parts[1]) return { page: 'collection', slug: parts[1] };
   if (p0 === 'work' && parts[1]) return { page: 'work', slug: parts[1] };
@@ -441,7 +449,7 @@ function renderHeader() {
               ></button>
             `).join('')}
           </div>
-          <button id="lang-toggle" class="pill-btn" type="button">${state.lang === 'en' ? 'عربي' : 'EN'}</button>
+          <button id="lang-toggle" class="pill-btn" type="button">${state.lang === 'en' ? 'عربي' : 'English'}</button>
           <a href="${pUrl('/solutions')}" data-nav="/solutions" class="pill-btn active hide-xs">${t('bookCall')}</a>
         </div>
       </div>
@@ -894,22 +902,7 @@ function renderMindPage() {
 }
 
 function renderCasesPage() {
-  const isAr = state.lang === 'ar';
-  return `
-    <section class="container" style="padding:40px 24px 64px;">
-      <span class="section-kicker">03 · ${isAr ? 'سجل الأدلة الموثقة' : 'VERIFIED PROOF VAULT'}</span>
-      <h1 class="hero-title">${isAr ? 'دراسات الحالة: المشكلة، الحل المعماري، والدليل الموثق' : 'Case Studies: Problem, Architecture & Verified Evidence'}</h1>
-      <p class="hero-sub">
-        ${isAr
-          ? 'كل دراسة حالة أدناه مبنية على ملفات تسليم أو أنظمة إنتاج حية، مع فصل صريح بين أعمال العملاء الفعلية والسيناريوهات التوضيحية.'
-          : 'Every dossier below is backed by real production systems or verified deliverables, strictly separating client work from illustrative teardowns.'}
-      </p>
-      <div class="case-grid" style="margin-top:24px;">
-        ${state.caseStudies.map(renderCaseCard).join('')}
-      </div>
-    </section>
-    ${renderContactSection()}
-  `;
+  return `${renderProofVaultPage(state, pUrl)}${renderContactSection()}`;
 }
 
 function renderCollection(slug) {
@@ -1097,6 +1090,9 @@ function render() {
     state.lang = state.lang === 'en' ? 'ar' : 'en';
     localStorage.setItem('artelligence_lang', state.lang);
     applyThemeAndLang();
+    if (state.route.page === 'cases') {
+      window.history.replaceState(null, '', pUrl(`/${state.lang}/proof/`));
+    }
     render();
   });
 

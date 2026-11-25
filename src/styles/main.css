@@ -730,7 +730,78 @@ img { display: block; max-width: 100%; }
 }
 .icon-svg-wrap img { width: 100%; height: 100%; object-fit: contain; }
 
-/* Mobile Native-Style Bottom Bar */
+/* Proof Vault Badges & Tech Details */
+.proof-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.proof-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+}
+.proof-badge-live { background: #064E3B; color: #ECFDF5; border-color: #10B981; }
+.proof-badge-client { background: #1E293B; color: #F8FAFC; border-color: #64748B; }
+.proof-badge-studio { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+.proof-badge-illustrative { background: #451A03; color: #FEF3C7; border-color: #F59E0B; }
+
+.proof-card-title { font-size: 1.2rem; font-weight: 700; }
+.proof-visual-note {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.proof-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.proof-tech-details {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.proof-tech-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Strict Arabic Typography & RTL Rules (Section 8) */
+:root:lang(ar), html[lang="ar"] {
+  font-family: var(--font-ar);
+  line-height: 1.75;
+}
+html[lang="ar"] body {
+  font-size: 16px;
+  line-height: 1.75;
+}
+html[lang="ar"] h1, html[lang="ar"] h2, html[lang="ar"] h3, html[lang="ar"] h4 {
+  line-height: 1.35;
+}
+html[lang="ar"] * {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  font-style: normal !important;
+}
+:root:lang(en), html[lang="en"] {
+  font-family: var(--font-en);
+  line-height: 1.6;
+}
 .mobile-bottom-nav {
   display: none;
 }
