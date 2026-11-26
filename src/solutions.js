@@ -69,10 +69,11 @@ export function renderSolutionsPage(state) {
               <ul class="offer-list">
                 ${delivs.map(d => `<li><span>•</span><span>${esc(d)}</span></li>`).join('')}
               </ul>
-              <div style="margin-top:auto;padding-top:16px;">
-                <a href="#teardown-box" class="pill-btn ${featured ? 'active' : ''}" style="width:100%;justify-content:center;">
+              <div style="margin-top:auto;padding-top:16px;display:flex;flex-direction:column;gap:8px;">
+                <a href="${idx === 0 ? (isAr ? 'https://wa.me/201501656010?text=%D8%A3%D9%87%D9%84%D8%A7%D9%8B%20%D8%A3%D8%AD%D9%85%D8%AF%D8%8C%20%D8%B9%D8%A7%D9%8A%D8%B2%20Teardown%20%D9%85%D8%AC%D8%A7%D9%86%D9%8A%20%D9%84%D8%AD%D8%B3%D8%A7%D8%A8%D9%8A%2F%D9%85%D9%88%D9%82%D8%B9%D9%8A%3A%20' : 'https://wa.me/201501656010?text=Hi%20Ahmed%2C%20I%27d%20like%20a%20free%202-min%20teardown%20for%3A%20') : '#teardown-box'}" ${idx === 0 ? 'target="_blank" rel="noopener"' : ''} class="pill-btn ${featured ? 'active' : ''}" style="width:100%;justify-content:center;">
                   ${esc(isAr ? off.cta_ar : off.cta_en)}
                 </a>
+                ${idx === 2 ? `<a href="/${state.lang}/proof/" data-nav="/${state.lang}/proof/" class="pill-btn" style="width:100%;justify-content:center;">${isAr ? 'شوفه شغال على الهوا ←' : 'See it running live ->'}</a>` : ''}
               </div>
             </article>
           `;

@@ -84,13 +84,34 @@ export function renderProofVaultPage(state, pUrl) {
               </div>
               <div class="proof-actions">
                 <a href="https://youtu.be/vcAci7XK_Wk" target="_blank" rel="noopener" class="pill-btn active">${isAr ? bdi('YouTube ↗') : 'YouTube ↗'}</a>
+                <a href="https://www.instagram.com/ahmdesam96" target="_blank" rel="noopener" class="pill-btn">${isAr ? `فيديوهات ${bdi('Astro')} على ${bdi('Instagram')} ↗` : 'Astro reels on my Instagram ↗'}</a>
                 <span class="pill-btn" aria-disabled="true">${isAr ? `${bdi('Facebook')} (قريباً)` : 'Facebook [TODO]'}</span>
-                <span class="pill-btn" aria-disabled="true">${isAr ? `${bdi('Instagram')} (قريباً)` : 'Instagram [TODO]'}</span>
               </div>
               <details class="proof-tech-details">
                 <summary>${labels.tech}</summary>
-                <p dir="ltr">SQLite scheduler, 1080x1920 10s seamless-loop reels, Meta Graph API v21.0, HMAC-SHA256 webhooks.</p>
+                <p dir="ltr">SQLite scheduler, 1080x1920 seamless-loop reels, Meta Graph API, HMAC-SHA256 webhooks.</p>
               </details>
+            </div>
+          </article>
+
+          <!-- 4.2 Live Content Engine -->
+          <article class="case-card">
+            <div class="case-body">
+              <div class="proof-card-top">
+                <span class="proof-badge proof-badge-live">${badges.live}</span>
+                <span class="collection-meta">${isAr ? 'نظام Growth OS الحي' : 'Live Growth OS'}</span>
+              </div>
+              <h3 class="proof-card-title">${isAr ? `محرك المحتوى الحي (${bdi('Live Content Engine')})` : 'Live Content Engine'}</h3>
+              <div class="case-pso">
+                <div><strong>${labels.problem}</strong> ${isAr ? 'إبقاء صفحات العلامات التجارية نشطة يومياً يستغرق ساعات من الكتابة والتصميم والنشر اليدوي.' : 'Keeping brand pages active every day takes hours of manual writing, design, and posting.'}</div>
+                <div><strong>${labels.built}</strong> ${isAr ? `نظام محتوى مؤتمت ينشر منشورات مجدولة على صفحات ${bdi('Artelligence')} (${bdi('Facebook')} و${bdi('Instagram')}) وصفحة ${bdi('WASL Network')} على ${bdi('Facebook')}. محتوى ${bdi('Artelligence')} تعليم عملي للذكاء الاصطناعي مستخلص من مشاريع حقيقية.` : 'An automated content system that publishes scheduled posts across the Artelligence pages (Facebook and Instagram) and the WASL Network Facebook page. Artelligence content is practical AI education drawn from real projects and lessons, not generic tips.'}</div>
+                <div><strong>${labels.outcome}</strong> ${isAr ? 'يعمل حالياً عبر قنوات Artelligence وWASL Network. [قريباً: تواريخ بدء التشغيل ومعدل النشر وإحصاءات Meta Business Suite].' : 'Active across Artelligence and WASL Network channels. [TODO: Start date, posting cadence, and Meta Business Suite export].'}</div>
+              </div>
+              <div class="proof-actions">
+                <span class="pill-btn" aria-disabled="true">${isAr ? `${bdi('Artelligence')} على ${bdi('Facebook')} (قريباً)` : 'Artelligence on Facebook [TODO]'}</span>
+                <span class="pill-btn" aria-disabled="true">${isAr ? `${bdi('Artelligence')} على ${bdi('Instagram')} (قريباً)` : 'Artelligence on Instagram [TODO]'}</span>
+                <span class="pill-btn" aria-disabled="true">${isAr ? `${bdi('WASL')} على ${bdi('Facebook')} (قريباً)` : 'WASL on Facebook [TODO]'}</span>
+              </div>
             </div>
           </article>
 
@@ -113,7 +134,7 @@ export function renderProofVaultPage(state, pUrl) {
                 <li><span>•</span><span>${isAr ? `مزايا شركاء للأعضاء: إرشاد مجاني مع ${bdi('ICCY')} وظهور خاص في بودكاست ${bdi('Cash Talks')}.` : 'Partner perks for members: free mentorship with ICCY and a spotlight on the Cash Talks podcast.'}</span></li>
               </ul>
               <div style="font-size:0.78rem;color:var(--muted);margin-top:6px;">
-                ${isAr ? 'الهوية البصرية: تسنيم إبراهيم' : 'Brand identity by Tasneem Ibrahim'}
+                ${isAr ? 'الهوية البصرية: تسنيم إبراهيم · نظام أيقونات الواجهة: أحمد عصام رمضان' : 'Brand identity by Tasneem Ibrahim · UI icon system by Ahmed Issam Ramadan'}
               </div>
               <div class="proof-actions">
                 <a href="https://wasl-network.com" target="_blank" rel="noopener" class="pill-btn wasl-cta-btn">${isAr ? 'زيارة المنصة ↗' : 'Open Live ↗'}</a>

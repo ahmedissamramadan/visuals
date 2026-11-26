@@ -77,7 +77,7 @@ export function renderPyramidSection(isAr) {
             </div>
           `).join('')}
           <div style="font-size:0.76rem;color:var(--muted);margin-top:6px;text-align:center;">
-            ${isAr ? 'مقياس تشخيصي ذاتي مبني على هندسة النظم وتطبيقات الإنتاج الفعلية.' : 'Self-diagnostic scale grounded in real production systems engineering.'}
+            ${isAr ? 'إطار من تصميم أحمد عصام رمضان.' : 'An original framework by Ahmed Issam Ramadan.'}
           </div>
         </div>
 

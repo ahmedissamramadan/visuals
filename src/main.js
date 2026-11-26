@@ -97,16 +97,16 @@ const T = {
     home: 'Home',
     solutions: 'Solutions',
     proof: 'Case Studies',
-    mind: 'Mind & Pyramid',
+    mind: 'How I Think',
     archive: 'Visual Archive',
     academy: 'Apps & Academy',
     lab: 'Interactive Lab',
     bookCall: 'Free 2m Teardown',
     availBadge: 'Business Transformation & AI Integration Consultant · Founder of Artelligence',
     heroTitle: 'What eats your time every day, runs on its own.',
-    heroSub: 'I turn messy daily operations in factories, finishing firms, and growing SMEs into simple autonomous systems - backed by verified numbers and zero complexity.',
+    heroSub: 'I turn messy daily operations in factories, finishing firms, and growing SMEs into simple autonomous systems - backed by real numbers and zero complexity.',
     exploreSolutions: 'Request Free 2m Teardown',
-    exploreProof: 'Verified Case Studies',
+    exploreProof: 'Case Studies',
     openMind: 'Enter My Mind',
     all: 'All',
     camera: 'Camera',
@@ -132,7 +132,7 @@ const T = {
     home: 'الرئيسية',
     solutions: 'الحلول و Growth OS',
     proof: 'خزينة الأدلة',
-    mind: 'داخل عقلي',
+    mind: 'طريقة تفكيري',
     archive: 'المتحف البصري',
     academy: 'التطبيقات والأكاديمية',
     lab: 'المختبر التفاعلي',
@@ -450,7 +450,7 @@ function renderHeader() {
             `).join('')}
           </div>
           <button id="lang-toggle" class="pill-btn" type="button">${state.lang === 'en' ? 'عربي' : 'English'}</button>
-          <a href="${pUrl('/solutions')}" data-nav="/solutions" class="pill-btn active hide-xs">${t('bookCall')}</a>
+          <a href="${state.lang === 'ar' ? 'https://wa.me/201501656010?text=%D8%A3%D9%87%D9%84%D8%A7%D9%8B%20%D8%A3%D8%AD%D9%85%D8%AF%D8%8C%20%D8%B9%D8%A7%D9%8A%D8%B2%20Teardown%20%D9%85%D8%AC%D8%A7%D9%86%D9%8A%20%D9%84%D8%AD%D8%B3%D8%A7%D8%A8%D9%8A%2F%D9%85%D9%88%D9%82%D8%B9%D9%8A%3A%20' : 'https://wa.me/201501656010?text=Hi%20Ahmed%2C%20I%27d%20like%20a%20free%202-min%20teardown%20for%3A%20'}" target="_blank" rel="noopener" class="pill-btn active hide-xs">${t('bookCall')}</a>
         </div>
       </div>
     </header>
@@ -616,7 +616,7 @@ function renderContactSection() {
     <section id="contact" class="section-block container">
       <div class="section-head">
         <div>
-          <span class="section-kicker">08 · ${isAr ? 'قنوات التواصل الرسمية الموحدة' : 'UNIFIED DIRECT CONTACT'}</span>
+          <span class="section-kicker">${isAr ? 'قنوات التواصل المباشر' : 'DIRECT CHANNELS'}</span>
           <h2 class="section-title">${isAr ? 'احجز مكالمة 15 دقيقة أو أرسل تفاصيل مشروعك مباشرة' : 'Book a 15-Min Call or Send Your Brief Directly'}</h2>
         </div>
       </div>
@@ -631,10 +631,10 @@ function renderContactSection() {
             <div><strong>WhatsApp (15m Call):</strong> <a href="https://wa.me/201501656010" target="_blank" rel="noopener" style="text-decoration:underline;" dir="ltr">+20 150 165 6010</a></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            <a href="https://wa.me/201501656010" target="_blank" rel="noopener" class="pill-btn active">WhatsApp · 15m Call ↗</a>
+            <a href="${isAr ? 'https://wa.me/201501656010?text=%D8%A3%D9%87%D9%84%D8%A7%D9%8B%20%D8%A3%D8%AD%D9%85%D8%AF%D8%8C%20%D8%B9%D8%A7%D9%8A%D8%B2%20%D8%A3%D8%AD%D8%AC%D8%B2%20%D9%85%D9%83%D8%A7%D9%84%D9%85%D8%A9%2015%20%D8%AF%D9%82%D9%8A%D9%82%D8%A9.' : 'https://wa.me/201501656010?text=Hi%20Ahmed%2C%20I%27d%20like%20to%20book%20a%2015-min%20call.'}" target="_blank" rel="noopener" class="pill-btn active">WhatsApp · 15m Call ↗</a>
             <a href="https://www.linkedin.com/in/ahmdesam96" target="_blank" rel="noopener" class="pill-btn">LinkedIn ↗</a>
             <a href="https://www.instagram.com/ahmdesam96" target="_blank" rel="noopener" class="pill-btn">Instagram ↗</a>
-            <a href="${pUrl('/academy')}" data-nav="/academy" class="pill-btn">${isAr ? 'تحميل تطبيق الأندرويد ↓' : 'Android App ↓'}</a>
+            <a href="https://github.com/ahmedissamramadan/visuals-android/releases/download/v2.0.18/Artelligence.apk" target="_blank" rel="noopener" class="pill-btn">${isAr ? 'تطبيق الأندرويد ↓' : 'Android App ↓'}</a>
           </div>
         </div>
         <div class="about-card">
@@ -705,13 +705,13 @@ function renderHome() {
           <h3>${isAr ? 'سُلّم الحلول وتأسيس Growth OS' : 'ABTI & Growth OS Solutions'}</h3>
           <p>${isAr ? 'احصل على فيديو تشريح مجاني لحسابك في دقيقتين واكتشف كيف يعمل الرد والكتالوج والمحتوى لوحده.' : 'Get a free 2-minute video teardown and deploy autonomous catalog & WhatsApp systems.'}</p>
         </a>
-        <a href="${pUrl('/proof')}" data-nav="/proof" class="audience-card">
+        <a href="${pUrl(`/${state.lang}/proof/`)}" data-nav="/${state.lang}/proof/" class="audience-card">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
             ${artIco('017_work.svg', 'art-ico-lg')}
-            <div class="collection-meta">PATH 02 · ${isAr ? 'لشركاء الأعمال وجهات الاستثمار والتوظيف' : 'FOR PARTNERS, INVESTORS & TEAMS'}</div>
+            <div class="collection-meta">${isAr ? 'لشركاء الأعمال وجهات الاستثمار والتوظيف' : 'FOR PARTNERS, INVESTORS & TEAMS'}</div>
           </div>
-          <h3>${isAr ? 'خزينة الأدلة ودراسات الحالة الموثقة' : 'Verified Proof & Systems Vault'}</h3>
-          <p>${isAr ? 'استعرض الأنظمة الحية: منصة شبكة وَصْل، هوية KHEM في 7 أيام، منظومة التشطيبات، ومحرك 92 ريل.' : 'Inspect live production proof: WASL Network, KHEM 7-day brand system, and 92-reel pipelines.'}</p>
+          <h3>${isAr ? 'خزينة الأدلة ودراسات الحالة' : 'Proof Vault & Case Studies'}</h3>
+          <p>${isAr ? 'أنظمة حية: WASL Network، محرك النشر التلقائي لـ 92 ريل، ومحرك المحتوى المستمر.' : 'Live systems: WASL Network, the 92-reel publishing engine, and our always-on content engine.'}</p>
         </a>
         <a href="${pUrl('/archive')}" data-nav="/archive" class="audience-card">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
@@ -1030,11 +1030,10 @@ function renderFooter() {
   return `
     <footer class="site-footer">
       <div class="container">
-        <!-- Signature 01: The Origin Dot Return Loop -->
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
           <span style="width:12px;height:12px;border-radius:50%;background:var(--accent);display:inline-block;"></span>
-          <span style="font-family:var(--font-mono);font-size:0.78rem;letter-spacing:0.08em;color:var(--text);">
-            ART • INTELLIGENCE • IMPACT · ${isAr ? 'نعود دائماً لنقطة الأصل' : 'ORIGIN LOOP COMPLETE'}
+          <span style="font-size:0.82rem;color:var(--text);">
+            ${isAr ? 'فن · ذكاء · أثر' : 'ART • INTELLIGENCE • IMPACT'}
           </span>
         </div>
 
